@@ -1,0 +1,111 @@
+{
+  "approval": {
+    "approval_model_version": 1,
+    "manifest_sha256": "76f8f5e9a6a8f7cdf3811018baff1a379eaaca629ace1d0f80c90bf77a518db7",
+    "state": "active"
+  },
+  "attestation": {
+    "attestation_version": 1,
+    "projection": {
+      "metadata": {
+        "approval": {
+          "approval_model_version": 1,
+          "manifest_sha256": "76f8f5e9a6a8f7cdf3811018baff1a379eaaca629ace1d0f80c90bf77a518db7",
+          "state": "active"
+        },
+        "last_operation": {
+          "kind": "archive",
+          "operation_id": "c74cae5605c2a45a81bcae66c065237883fa01d38d89100f89026803e2065c42"
+        },
+        "metadata_version": 1,
+        "revision": null,
+        "terminal": {
+          "archive_date": "2026-08-25",
+          "destination_directory": "2026-08-25-build-geo-aeo-audit-cli",
+          "operation": {
+            "kind": "archive",
+            "operation_id": "c74cae5605c2a45a81bcae66c065237883fa01d38d89100f89026803e2065c42"
+          },
+          "short_name": "build-geo-aeo-audit-cli",
+          "source_snapshot": {
+            "proposal_sha256": "ec625bb0e4244e35109159bfa7c5e8a9de9e3115ac335da4a1a88c260ca74b70",
+            "snapshot_digest": "3eba2a73df44d1663b85885bffa19bd29cd6d421354577b8f4be04083f9a8a98",
+            "snapshot_version": 1,
+            "tasks_sha256": "9558ea4d1a349456b354ed97465d41cb888a640924342e4e5b56846a02c88cc5"
+          },
+          "source_status": "approved",
+          "summary": "GEO/AEO audit CLI 完成：安全 transport、discovery 取樣、技術/內容規則、scorecard、版本化 JSON+HTML 報告，90 測試通過",
+          "terminal_metadata_version": 1,
+          "terminal_status": "completed",
+          "timestamp": "2026-08-24T16:35:05Z"
+        }
+      },
+      "status": "completed",
+      "tasks": [
+        {
+          "completed": true,
+          "ordinal": 1
+        },
+        {
+          "completed": true,
+          "ordinal": 2
+        },
+        {
+          "completed": true,
+          "ordinal": 3
+        },
+        {
+          "completed": true,
+          "ordinal": 4
+        },
+        {
+          "completed": true,
+          "ordinal": 5
+        },
+        {
+          "completed": true,
+          "ordinal": 6
+        },
+        {
+          "completed": true,
+          "ordinal": 7
+        },
+        {
+          "completed": true,
+          "ordinal": 8
+        }
+      ]
+    },
+    "projection_sha256": "1f0ad3dba82606ef2de65fa56e16251a5d0e4955631f8f761de2d4e13e5af26c"
+  },
+  "last_operation": {
+    "kind": "archive",
+    "operation_id": "c74cae5605c2a45a81bcae66c065237883fa01d38d89100f89026803e2065c42"
+  },
+  "metadata_version": 1,
+  "revision": null,
+  "terminal": {
+    "archive_date": "2026-08-25",
+    "destination_directory": "2026-08-25-build-geo-aeo-audit-cli",
+    "operation": {
+      "kind": "archive",
+      "operation_id": "c74cae5605c2a45a81bcae66c065237883fa01d38d89100f89026803e2065c42"
+    },
+    "short_name": "build-geo-aeo-audit-cli",
+    "source_snapshot": {
+      "proposal_sha256": "ec625bb0e4244e35109159bfa7c5e8a9de9e3115ac335da4a1a88c260ca74b70",
+      "snapshot_digest": "3eba2a73df44d1663b85885bffa19bd29cd6d421354577b8f4be04083f9a8a98",
+      "snapshot_version": 1,
+      "tasks_sha256": "9558ea4d1a349456b354ed97465d41cb888a640924342e4e5b56846a02c88cc5"
+    },
+    "source_status": "approved",
+    "summary": "GEO/AEO audit CLI 完成：安全 transport、discovery 取樣、技術/內容規則、scorecard、版本化 JSON+HTML 報告，90 測試通過",
+    "terminal_metadata_version": 1,
+    "terminal_status": "completed",
+    "timestamp": "2026-08-24T16:35:05Z"
+  },
+  "writer": {
+    "engine": "sdd-workflow",
+    "version": "1.3.0"
+  }
+}

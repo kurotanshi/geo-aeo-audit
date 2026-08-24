@@ -4,7 +4,7 @@ schema_version: 2
 # build-geo-aeo-audit-cli
 
 ## 狀態
-approved
+completed
 
 ## 類型
 新功能
