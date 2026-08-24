@@ -9,6 +9,7 @@ export type TransportReason =
   | "redirect_limit"
   | "redirect_loop"
   | "non_http_redirect"
+  | "out_of_scope"
   | "response_too_large"
   | "decompressed_too_large"
   | "header_too_large"

@@ -127,6 +127,22 @@ describe("safeFetch limit enforcement (fixture server)", () => {
     );
   });
 
+  it("rejects an out-of-scope redirect before resolving its target", async () => {
+    let outsideResolved = false;
+    const deps: TransportDeps = {
+      isPublic: () => true,
+      resolve: async (hostname) => {
+        if (hostname === "outside.example") outsideResolved = true;
+        return [{ address: "127.0.0.1", family: 4 }];
+      },
+    };
+    await expectReason(
+      safeFetch(`${fx.origin}/cross-origin-redirect`, { limits: limits(), deps, allowedOrigin: fx.origin }),
+      "out_of_scope",
+    );
+    expect(outsideResolved).toBe(false);
+  });
+
   it("rejects a redirect loop", async () => {
     await expectReason(
       safeFetch(`${fx.origin}/loop`, { limits: limits({ maxRedirects: 10 }), deps: allowLoopback }),

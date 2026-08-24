@@ -26,6 +26,8 @@ export interface SafeResponse {
   status: number;
   headers: http.IncomingHttpHeaders;
   body: Buffer;
+  /** Number of response-body bytes received before content decoding. */
+  rawBodyBytes: number;
   contentEncoding: string | undefined;
   redirects: { from: string; status: number; to: string }[];
   resolvedIp: string;
@@ -110,7 +112,7 @@ function decompress(raw: Buffer, encoding: string | undefined, maxOut: number): 
 
 type HopResult =
   | { kind: "redirect"; status: number; location: string }
-  | { kind: "final"; status: number; headers: http.IncomingHttpHeaders; body: Buffer };
+  | { kind: "final"; status: number; headers: http.IncomingHttpHeaders; body: Buffer; rawBodyBytes: number };
 
 /** Perform one request to a pre-validated, pinned IP. Times out the whole hop. */
 function hop(target: URL, pin: ResolvedAddress, limits: AuditLimits, userAgent: string): Promise<HopResult> {
@@ -188,7 +190,7 @@ function hop(target: URL, pin: ResolvedAddress, limits: AuditLimits, userAgent: 
         if (settled) return;
         try {
           const body = decompress(Buffer.concat(chunks), res.headers["content-encoding"], limits.maxDecompressedBytes);
-          succeed({ kind: "final", status, headers: res.headers, body });
+          succeed({ kind: "final", status, headers: res.headers, body, rawBodyBytes: size });
         } catch (err) {
           fail(err);
         }
@@ -210,7 +212,7 @@ function hop(target: URL, pin: ResolvedAddress, limits: AuditLimits, userAgent: 
  */
 export async function safeFetch(
   rawUrl: string,
-  opts: { limits: AuditLimits; userAgent?: string; deps?: TransportDeps },
+  opts: { limits: AuditLimits; userAgent?: string; deps?: TransportDeps; allowedOrigin?: string },
 ): Promise<SafeResponse> {
   const resolve = opts.deps?.resolve ?? defaultResolve;
   const isPublic = opts.deps?.isPublic ?? isPublicUnicastIp;
@@ -218,6 +220,9 @@ export async function safeFetch(
   const { limits } = opts;
 
   let current = parseAndValidate(rawUrl);
+  if (opts.allowedOrigin !== undefined && current.origin !== opts.allowedOrigin) {
+    throw new TransportError("out_of_scope", `URL origin ${current.origin} is outside ${opts.allowedOrigin}`);
+  }
   const visited = new Set<string>([current.toString()]);
   const redirects: SafeResponse["redirects"] = [];
 
@@ -231,6 +236,7 @@ export async function safeFetch(
         status: result.status,
         headers: result.headers,
         body: result.body,
+        rawBodyBytes: result.rawBodyBytes,
         contentEncoding: result.headers["content-encoding"],
         redirects,
         resolvedIp: pin.address,
@@ -252,6 +258,9 @@ export async function safeFetch(
     }
     if (next.username || next.password) {
       throw new TransportError("credentials_in_url", "redirect target embeds credentials");
+    }
+    if (opts.allowedOrigin !== undefined && next.origin !== opts.allowedOrigin) {
+      throw new TransportError("out_of_scope", `redirect origin ${next.origin} is outside ${opts.allowedOrigin}`);
     }
     const key = next.toString();
     if (visited.has(key)) {

@@ -15,7 +15,7 @@
         },
         "last_operation": {
           "kind": "complete-task",
-          "operation_id": "fe435c72913df296b186efec768c1758e69cf280cd2e35817f3df3bbb9c93240"
+          "operation_id": "8af66b2a6e81d5e471a47819afaa27ec099de251854d047165d864b5fbb046aa"
         },
         "metadata_version": 1,
         "revision": null
@@ -31,11 +31,11 @@
           "ordinal": 2
         },
         {
-          "completed": false,
+          "completed": true,
           "ordinal": 3
         },
         {
-          "completed": false,
+          "completed": true,
           "ordinal": 4
         },
         {
@@ -56,16 +56,16 @@
         }
       ]
     },
-    "projection_sha256": "962de9cbe340b8cd1db702704f8a73dacb6c1ab2ce49174956d3d310aad4f308"
+    "projection_sha256": "7694ff2afad232a08dcd35b678c2813d50ee776c525b5b6ce76498102f25e5f5"
   },
   "last_operation": {
     "kind": "complete-task",
-    "operation_id": "fe435c72913df296b186efec768c1758e69cf280cd2e35817f3df3bbb9c93240"
+    "operation_id": "8af66b2a6e81d5e471a47819afaa27ec099de251854d047165d864b5fbb046aa"
   },
   "metadata_version": 1,
   "revision": null,
   "writer": {
     "engine": "sdd-workflow",
-    "version": "1.3.0"
+    "version": "1.1.0"
   }
 }

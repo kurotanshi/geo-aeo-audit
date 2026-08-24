@@ -57,15 +57,17 @@ describe("geo-aeo CLI", () => {
     expect(code).toBe(2);
   });
 
-  it("audit of a valid url exits 0 and emits a versioned JSON envelope", async () => {
-    const { code, stdout } = await run(["audit", "https://example.com/", "--fail-on", "never"]);
+  it("audit emits a versioned JSON envelope without connecting to a rejected SSRF target", async () => {
+    const { code, stdout } = await run(["audit", "http://127.0.0.1/", "--fail-on", "never"]);
     expect(code).toBe(0);
     const parsed = JSON.parse(stdout);
     expect(parsed.schema_version).toBe("1.0.0");
     expect(parsed.tool_version).toMatch(/^\d+\.\d+\.\d+/);
     expect(parsed.ruleset_version).toBeTruthy();
-    expect(parsed.target.requested_url).toBe("https://example.com/");
+    expect(parsed.target.requested_url).toBe("http://127.0.0.1/");
     expect(Array.isArray(parsed.findings)).toBe(true);
     expect(Array.isArray(parsed.blockers)).toBe(true);
+    expect(parsed.findings).toContainEqual(expect.objectContaining({ id: "technical.transport", result: "error" }));
+    expect(parsed.blockers).toContainEqual(expect.objectContaining({ kind: "transport_or_protocol" }));
   });
 });
