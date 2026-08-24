@@ -66,7 +66,9 @@ describe("geo-aeo CLI", () => {
     expect(parsed.ruleset_version).toBeTruthy();
     expect(parsed.target.requested_url).toBe("http://127.0.0.1/");
     expect(Array.isArray(parsed.findings)).toBe(true);
+    expect(Array.isArray(parsed.scorecards)).toBe(true);
     expect(Array.isArray(parsed.blockers)).toBe(true);
+    expect(parsed).not.toHaveProperty("score");
     expect(parsed.findings).toContainEqual(expect.objectContaining({ id: "technical.transport", result: "error" }));
     expect(parsed.blockers).toContainEqual(expect.objectContaining({ kind: "transport_or_protocol" }));
   });

@@ -15,7 +15,7 @@
         },
         "last_operation": {
           "kind": "complete-task",
-          "operation_id": "2c72c04943099e52afe83499eadbe341f41ba6ceb4bc52fb6dcf0676d668fbc2"
+          "operation_id": "699d64e09721edb2bedd269dc73f980f9027c98f30e63d758db0bf7697df5ed7"
         },
         "metadata_version": 1,
         "revision": null
@@ -43,7 +43,7 @@
           "ordinal": 5
         },
         {
-          "completed": false,
+          "completed": true,
           "ordinal": 6
         },
         {
@@ -56,11 +56,11 @@
         }
       ]
     },
-    "projection_sha256": "9007cf41a9925c393ab53663322366bf8e0ac1220ea533f4381b9b288b77cf49"
+    "projection_sha256": "db1c78b81f368609673062add1acc03bb220b208ec630d8cad302f3da4c9c115"
   },
   "last_operation": {
     "kind": "complete-task",
-    "operation_id": "2c72c04943099e52afe83499eadbe341f41ba6ceb4bc52fb6dcf0676d668fbc2"
+    "operation_id": "699d64e09721edb2bedd269dc73f980f9027c98f30e63d758db0bf7697df5ed7"
   },
   "metadata_version": 1,
   "revision": null,

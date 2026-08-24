@@ -6,7 +6,13 @@ import {
   ALL_PRODUCT_SCOPES,
   type AgentRegistryEntry,
 } from "../registry/agents.js";
-import type { Blocker, EvidenceKind, Finding, RuleResult } from "../schema/result.js";
+import type {
+  Blocker,
+  EvidenceKind,
+  Finding,
+  RuleResult,
+  ScoreImpact,
+} from "../schema/result.js";
 
 export interface TechnicalPageObservation {
   url: string;
@@ -43,6 +49,7 @@ type FindingFields = Omit<Finding, "id" | "result"> & {
   rationale: string;
   recommendation: string;
   evidence_kind: EvidenceKind;
+  score_impact: ScoreImpact;
   claim_scope: string[];
   source_url?: string;
 };
@@ -66,6 +73,7 @@ export function auditTechnicalEligibility(input: TechnicalAuditInput): Technical
         rationale: "The audit transport could not obtain a response, so technical eligibility cannot be measured.",
         recommendation: "Resolve the DNS, TLS, redirect, HTTP, or network failure and run the audit again.",
         evidence_kind: "empirical_observation",
+        score_impact: "informational",
         claim_scope: [],
       }),
     );
@@ -116,6 +124,7 @@ function addUnavailablePageFindings(url: string, findings: Finding[], reason: st
       rationale: reason,
       recommendation: "Review the measurement limitation and rerun when the page can be fetched.",
       evidence_kind: "empirical_observation",
+      score_impact: "scored",
       claim_scope: [],
     }),
   );
@@ -124,11 +133,11 @@ function addUnavailablePageFindings(url: string, findings: Finding[], reason: st
 
 function addUnavailableContentFindings(url: string, findings: Finding[], reason: string): void {
   const specs = [
-    ["technical.indexability", "access_and_eligibility"],
-    ["technical.canonical", "discoverability"],
-    ["technical.initial_html_content", "parseability"],
+    ["technical.indexability", "access_and_eligibility", "scored"],
+    ["technical.canonical", "discoverability", "scored"],
+    ["technical.initial_html_content", "parseability", "informational"],
   ] as const;
-  for (const [id, category] of specs) {
+  for (const [id, category, scoreImpact] of specs) {
     findings.push(
       finding(id, "not_tested", {
         severity: "warning",
@@ -137,6 +146,7 @@ function addUnavailableContentFindings(url: string, findings: Finding[], reason:
         rationale: "The initial page content was intentionally not evaluated.",
         recommendation: "Review robots access and rerun the content audit when appropriate.",
         evidence_kind: "empirical_observation",
+        score_impact: scoreImpact,
         claim_scope: [],
       }),
     );
@@ -153,6 +163,7 @@ function auditHttp(page: TechnicalPageObservation, findings: Finding[], blockers
       rationale: ok ? "The final response has a successful HTTP status." : "The final response is not a successful HTTP status.",
       recommendation: ok ? "No change required." : "Serve the audited URL with a successful final HTTP response.",
       evidence_kind: "standard",
+      score_impact: "scored",
       claim_scope: [],
       source_url: "https://www.rfc-editor.org/rfc/rfc9110.html#name-status-codes",
     }),
@@ -194,6 +205,7 @@ function auditIndexability(
         : "No noindex directive was observed in the initial response headers or HTML.",
       recommendation: noindex ? "Remove noindex only if this page should be eligible for indexing." : "No change required.",
       evidence_kind: "official_behavior",
+      score_impact: "scored",
       claim_scope: GOOGLE_NOINDEX_SCOPES,
       source_url: "https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag",
     }),
@@ -237,6 +249,7 @@ function auditCanonical(pageUrl: string, html: string, findings: Finding[]): voi
       rationale,
       recommendation: result === "pass" ? "No change required." : "Provide exactly one valid canonical link in the initial HTML.",
       evidence_kind: "official_recommendation",
+      score_impact: "scored",
       claim_scope: [],
       source_url: "https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls",
     }),
@@ -261,6 +274,10 @@ function auditProviderRobots(
           rationale: `The ${agent.productToken} policy could not be measured.`,
           recommendation: "Make robots.txt reliably available and rerun the audit.",
           evidence_kind: "empirical_observation",
+          score_impact:
+            agent.robotsApplicability === "applies" || agent.robotsApplicability === "control_token"
+              ? "scored"
+              : "informational",
           claim_scope: [...agent.productScopes],
           source_url: agent.officialSourceUrl,
         }),
@@ -288,6 +305,7 @@ function auditProviderRobots(
             : `Review the ${agent.productToken} rule; its official behavior does not support a definitive eligibility blocker.`
           : "No change required.",
         evidence_kind: "official_behavior",
+        score_impact: asserted ? "scored" : "informational",
         claim_scope: [...agent.productScopes],
         source_url: agent.officialSourceUrl,
       }),
@@ -330,6 +348,7 @@ function auditSitemap(
           : "The audited page was not present in the sitemap URLs observed by this bounded audit.",
       recommendation: result === "fail" ? "Add the canonical page URL to an appropriate sitemap if it should be discovered." : "No change required.",
       evidence_kind: "standard",
+      score_impact: "scored",
       claim_scope: [],
       source_url: "https://www.sitemaps.org/protocol.html",
     }),
@@ -358,6 +377,7 @@ function auditInitialHtml(html: string, findings: Finding[]): void {
         ? "Render meaningful primary content in the initial HTML when practical, or verify it separately with a browser-based audit."
         : "No change required.",
       evidence_kind: "empirical_observation",
+      score_impact: "informational",
       claim_scope: [],
       source_url: "https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics",
     }),

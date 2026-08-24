@@ -63,6 +63,20 @@ describe("runAudit technical integration", () => {
         expect.objectContaining({ id, result: "pass", subject_url: `${fx.origin}/article` }),
       );
     }
+    expect(result.findings.every((item) => typeof item.score_impact === "string")).toBe(true);
+    expect(result.scorecards.map((item) => item.category)).toEqual([
+      "access_and_eligibility",
+      "discoverability",
+      "parseability",
+      "freshness_and_entity",
+      "source_and_evidence",
+    ]);
+    expect(result.scorecards.find((item) => item.category === "parseability")?.score.value).toBe(100);
+    expect(result.scorecards.find((item) => item.category === "source_and_evidence")?.score).toMatchObject({
+      value: null,
+      denominator: 0,
+    });
+    expect(result).not.toHaveProperty("score");
   });
 
   it("marks initial-content checks not tested when the audit crawler is blocked", async () => {

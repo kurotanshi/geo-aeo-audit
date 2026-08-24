@@ -4,6 +4,7 @@ import { evaluateRobots, parseRobotsTxt, type ParsedRobots } from "../discovery/
 import { normalizeHttpUrl } from "../discovery/url.js";
 import { auditPageContent } from "../rules/content.js";
 import { auditTechnicalEligibility, type TechnicalAuditResult } from "../rules/technical.js";
+import { buildScorecards } from "../scorecard.js";
 import type { AuditResult, Blocker, Finding } from "../schema/result.js";
 import { TransportError } from "../transport/errors.js";
 import { safeFetch, type SafeResponse, type TransportDeps } from "../transport/safe-fetch.js";
@@ -89,6 +90,7 @@ export async function runAudit(config: AuditConfig, deps: RunAuditDeps = {}): Pr
     generated_at: (deps.now?.() ?? new Date()).toISOString(),
     target: { requested_url: config.url, mode: config.mode },
     findings,
+    scorecards: buildScorecards(findings),
     blockers,
   };
 }

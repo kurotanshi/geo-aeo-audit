@@ -1,5 +1,10 @@
 import { parse, type DefaultTreeAdapterTypes } from "parse5";
-import type { EvidenceKind, Finding, RuleResult } from "../schema/result.js";
+import type {
+  EvidenceKind,
+  Finding,
+  RuleResult,
+  ScoreImpact,
+} from "../schema/result.js";
 
 type Node = DefaultTreeAdapterTypes.Node;
 type ParentNode = DefaultTreeAdapterTypes.ParentNode;
@@ -25,6 +30,7 @@ interface FindingFields {
   rationale: string;
   recommendation: string;
   evidence_kind: EvidenceKind;
+  score_impact: ScoreImpact;
   claim_scope: string[];
   source_url?: string;
 }
@@ -47,18 +53,22 @@ const ARTICLE_TYPES = new Set([
   "reviewnewsarticle",
 ]);
 
-const CONTENT_RULES: readonly { id: string; category: Category }[] = [
-  { id: "content.title", category: "parseability" },
-  { id: "content.meta_description", category: "parseability" },
-  { id: "content.language", category: "parseability" },
-  { id: "content.heading_structure", category: "parseability" },
-  { id: "content.jsonld_validity", category: "parseability" },
-  { id: "content.article_structured_data", category: "parseability" },
-  { id: "content.author", category: "freshness_and_entity" },
-  { id: "content.publication_date", category: "freshness_and_entity" },
-  { id: "content.entity_identity", category: "freshness_and_entity" },
-  { id: "content.update_signal", category: "freshness_and_entity" },
-  { id: "content.source_links", category: "source_and_evidence" },
+const CONTENT_RULES: readonly {
+  id: string;
+  category: Category;
+  scoreImpact: ScoreImpact;
+}[] = [
+  { id: "content.title", category: "parseability", scoreImpact: "scored" },
+  { id: "content.meta_description", category: "parseability", scoreImpact: "scored" },
+  { id: "content.language", category: "parseability", scoreImpact: "scored" },
+  { id: "content.heading_structure", category: "parseability", scoreImpact: "experimental" },
+  { id: "content.jsonld_validity", category: "parseability", scoreImpact: "scored" },
+  { id: "content.article_structured_data", category: "parseability", scoreImpact: "scored" },
+  { id: "content.author", category: "freshness_and_entity", scoreImpact: "scored" },
+  { id: "content.publication_date", category: "freshness_and_entity", scoreImpact: "scored" },
+  { id: "content.entity_identity", category: "freshness_and_entity", scoreImpact: "scored" },
+  { id: "content.update_signal", category: "freshness_and_entity", scoreImpact: "scored" },
+  { id: "content.source_links", category: "source_and_evidence", scoreImpact: "experimental" },
 ];
 
 /** Inspect static page content and emit evidence-complete findings without network access. */
@@ -106,6 +116,7 @@ function auditTitle(document: ParentNode, findings: Finding[]): void {
           : "Multiple title elements make the preferred page title ambiguous.",
       recommendation: ok ? "No change required." : "Provide exactly one concise, descriptive title element.",
       evidence_kind: "official_recommendation",
+      score_impact: "scored",
       claim_scope: ["google_search"],
       source_url: "https://developers.google.com/search/docs/appearance/title-link",
     }),
@@ -125,6 +136,7 @@ function auditDescription(document: ParentNode, findings: Finding[]): void {
         : "The page does not supply one unambiguous meta description.",
       recommendation: ok ? "No change required." : "Provide one page-specific, useful meta description.",
       evidence_kind: "official_recommendation",
+      score_impact: "scored",
       claim_scope: ["google_search"],
       source_url: "https://developers.google.com/search/docs/appearance/snippet",
     }),
@@ -143,6 +155,7 @@ function auditLanguage(document: ParentNode, findings: Finding[]): void {
       rationale: valid ? "The document declares a syntactically plausible language tag." : "The document language is absent or malformed.",
       recommendation: valid ? "No change required." : "Set html lang to the primary content language using a valid language tag.",
       evidence_kind: "standard",
+      score_impact: "scored",
       claim_scope: ["html_consumers"],
       source_url: "https://html.spec.whatwg.org/multipage/dom.html#attr-lang",
     }),
@@ -169,6 +182,7 @@ function auditHeadings(document: ParentNode, findings: Finding[]): void {
         : "The static heading outline has no primary h1 or skips a hierarchy level.",
       recommendation: valid ? "No change required." : "Expose a clear h1 and use heading levels in a coherent hierarchy.",
       evidence_kind: "heuristic",
+      score_impact: "experimental",
       claim_scope: ["static_html_readability"],
     }),
   );
@@ -192,6 +206,7 @@ function auditJsonLd(jsonLd: JsonLdAnalysis, findings: Finding[]): void {
           : "JSON-LD syntax is not applicable because none was supplied.",
       recommendation: result === "error" ? "Correct invalid JSON-LD syntax and rerun the audit." : "No change required.",
       evidence_kind: "standard",
+      score_impact: "scored",
       claim_scope: ["web_structured_data"],
       source_url: "https://www.w3.org/TR/json-ld11/",
     }),
@@ -231,6 +246,7 @@ function auditArticleStructuredData(
             : "An article-like page does not provide an Article-family JSON-LD entity.",
       recommendation: result === "fail" ? "Add accurate Article JSON-LD when the page is an article." : "No change required.",
       evidence_kind: "official_recommendation",
+      score_impact: "scored",
       claim_scope: ["google_search_article_rich_results"],
       source_url: "https://developers.google.com/search/docs/appearance/structured-data/article",
     }),
@@ -266,6 +282,7 @@ function auditAuthor(
           : "The article has no observable author signal.",
       recommendation: result === "fail" ? "Identify the article author and keep visible and structured author data consistent." : "No change required.",
       evidence_kind: "official_recommendation",
+      score_impact: "scored",
       claim_scope: ["google_search_article_rich_results"],
       source_url: "https://developers.google.com/search/docs/appearance/structured-data/article#author-markup-best-practices",
     }),
@@ -299,6 +316,7 @@ function auditPublicationDate(
           : "The article lacks a valid ISO 8601 publication-date signal.",
       recommendation: result === "fail" ? "Provide an accurate visible date and datePublished structured value." : "No change required.",
       evidence_kind: "official_recommendation",
+      score_impact: "scored",
       claim_scope: ["google_search"],
       source_url: "https://developers.google.com/search/docs/appearance/publication-dates",
     }),
@@ -327,6 +345,7 @@ function auditEntityIdentity(
           : "An applicable article or profile page does not expose a named Person or Organization entity in JSON-LD.",
       recommendation: result === "fail" ? "Use accurate Person or Organization entities for applicable authors and publishers." : "No change required.",
       evidence_kind: "official_recommendation",
+      score_impact: "scored",
       claim_scope: ["google_search_structured_data"],
       source_url: "https://developers.google.com/search/docs/appearance/structured-data/profile-page",
     }),
@@ -360,6 +379,7 @@ function auditUpdateSignal(
           : "No valid last-modified signal was observed; this does not prove that the content is stale.",
       recommendation: result === "fail" ? "When the article changes materially, expose an accurate visible date and dateModified value." : "No change required.",
       evidence_kind: "official_recommendation",
+      score_impact: "scored",
       claim_scope: ["google_search"],
       source_url: "https://developers.google.com/search/docs/appearance/publication-dates",
     }),
@@ -414,6 +434,7 @@ function auditSourceLinks(
           : "No external source link was observed; this is a transparency signal, not a universal ranking requirement.",
       recommendation: result === "fail" ? "Link primary sources where claims rely on external evidence and where doing so helps readers." : "No change required.",
       evidence_kind: "heuristic",
+      score_impact: "experimental",
       claim_scope: ["article_source_transparency"],
     }),
   );
@@ -447,7 +468,7 @@ function collectObjects(value: unknown, output: Record<string, unknown>[]): void
 }
 
 function unavailableFindings(url: string, reason: string): Finding[] {
-  return CONTENT_RULES.map(({ id, category }) =>
+  return CONTENT_RULES.map(({ id, category, scoreImpact }) =>
     finding(id, "not_tested", {
       severity: "warning",
       category,
@@ -455,6 +476,7 @@ function unavailableFindings(url: string, reason: string): Finding[] {
       rationale: "Static page content was not available for this rule.",
       recommendation: "Resolve the measurement limitation and rerun the audit.",
       evidence_kind: "empirical_observation",
+      score_impact: scoreImpact,
       claim_scope: [],
     }),
   );

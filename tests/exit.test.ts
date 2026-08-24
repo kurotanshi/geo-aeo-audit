@@ -1,6 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { ExitCode, resolveExitCode } from "../src/exit.js";
-import type { AuditResult } from "../src/schema/result.js";
+import type { AuditResult, Blocker, BlockerKind } from "../src/schema/result.js";
+
+function blocker(kind: BlockerKind): Blocker {
+  return {
+    kind,
+    rule_id: "test.blocker",
+    evidence: [],
+    applies_to: [],
+    not_asserted_for: [],
+  };
+}
 
 function makeResult(overrides: Partial<AuditResult> = {}): AuditResult {
   return {
@@ -10,6 +20,7 @@ function makeResult(overrides: Partial<AuditResult> = {}): AuditResult {
     generated_at: "2026-01-01T00:00:00.000Z",
     target: { requested_url: "https://example.com/", mode: "page" },
     findings: [],
+    scorecards: [],
     blockers: [],
     ...overrides,
   };
@@ -24,12 +35,12 @@ describe("resolveExitCode", () => {
   });
 
   it("never trips the threshold under fail-on=never even with blockers", () => {
-    const withBlocker = makeResult({ blockers: [{ kind: "transport_or_protocol" }] });
+    const withBlocker = makeResult({ blockers: [blocker("transport_or_protocol")] });
     expect(resolveExitCode(withBlocker, "never")).toBe(ExitCode.SUCCESS);
   });
 
   it("trips FAIL_THRESHOLD on a blocker under fail-on=blocker", () => {
-    const withBlocker = makeResult({ blockers: [{ kind: "provider_eligibility" }] });
+    const withBlocker = makeResult({ blockers: [blocker("provider_eligibility")] });
     expect(resolveExitCode(withBlocker, "blocker")).toBe(ExitCode.FAIL_THRESHOLD);
   });
 
@@ -42,7 +53,7 @@ describe("resolveExitCode", () => {
     expect(resolveExitCode(makeResult({ findings: [{ id: "r1", result: "error" }] }), "error")).toBe(
       ExitCode.FAIL_THRESHOLD,
     );
-    expect(resolveExitCode(makeResult({ blockers: [{ kind: "transport_or_protocol" }] }), "error")).toBe(
+    expect(resolveExitCode(makeResult({ blockers: [blocker("transport_or_protocol")] }), "error")).toBe(
       ExitCode.FAIL_THRESHOLD,
     );
     expect(resolveExitCode(makeResult({ findings: [{ id: "r1", result: "fail" }] }), "error")).toBe(

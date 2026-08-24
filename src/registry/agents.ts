@@ -25,7 +25,7 @@ export interface AgentRegistryEntry {
 const CHECKED_AT = "2026-08-24";
 
 /**
- * Versioned registry of the provider agents in ruleset 0.1.0.
+ * Versioned registry of the provider agents in the current ruleset.
  *
  * Every applicability value is an observed statement from the linked provider
  * documentation. Agent kind is descriptive and deliberately has no role in
