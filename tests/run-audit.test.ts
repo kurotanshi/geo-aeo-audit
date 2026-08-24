@@ -45,6 +45,26 @@ describe("runAudit technical integration", () => {
     );
   });
 
+  it("runs content, entity and evidence rules for fetched static HTML", async () => {
+    const result = await runAudit(config(`${fx.origin}/article`), { transportDeps: allowLoopback });
+    for (const id of [
+      "content.title",
+      "content.meta_description",
+      "content.language",
+      "content.heading_structure",
+      "content.article_structured_data",
+      "content.author",
+      "content.publication_date",
+      "content.entity_identity",
+      "content.update_signal",
+      "content.source_links",
+    ]) {
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({ id, result: "pass", subject_url: `${fx.origin}/article` }),
+      );
+    }
+  });
+
   it("marks initial-content checks not tested when the audit crawler is blocked", async () => {
     const result = await runAudit(config(`${fx.origin}/crawler-private`), { transportDeps: allowLoopback });
     expect(result.findings).toContainEqual(

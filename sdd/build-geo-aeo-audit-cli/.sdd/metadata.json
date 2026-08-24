@@ -15,7 +15,7 @@
         },
         "last_operation": {
           "kind": "complete-task",
-          "operation_id": "8af66b2a6e81d5e471a47819afaa27ec099de251854d047165d864b5fbb046aa"
+          "operation_id": "2c72c04943099e52afe83499eadbe341f41ba6ceb4bc52fb6dcf0676d668fbc2"
         },
         "metadata_version": 1,
         "revision": null
@@ -39,7 +39,7 @@
           "ordinal": 4
         },
         {
-          "completed": false,
+          "completed": true,
           "ordinal": 5
         },
         {
@@ -56,11 +56,11 @@
         }
       ]
     },
-    "projection_sha256": "7694ff2afad232a08dcd35b678c2813d50ee776c525b5b6ce76498102f25e5f5"
+    "projection_sha256": "9007cf41a9925c393ab53663322366bf8e0ac1220ea533f4381b9b288b77cf49"
   },
   "last_operation": {
     "kind": "complete-task",
-    "operation_id": "8af66b2a6e81d5e471a47819afaa27ec099de251854d047165d864b5fbb046aa"
+    "operation_id": "2c72c04943099e52afe83499eadbe341f41ba6ceb4bc52fb6dcf0676d668fbc2"
   },
   "metadata_version": 1,
   "revision": null,

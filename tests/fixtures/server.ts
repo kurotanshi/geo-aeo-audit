@@ -92,6 +92,24 @@ export async function startFixture(): Promise<Fixture> {
         res.writeHead(200, { "content-type": "text/html" });
         res.end("<html><body>site entry</body></html>");
         return;
+      case "/article":
+        res.writeHead(200, { "content-type": "text/html" });
+        res.end(`<!doctype html><html lang="en"><head>
+          <title>Fixture article</title>
+          <meta name="description" content="A complete fixture article for content audit integration.">
+          <script type="application/ld+json">{
+            "@context":"https://schema.org",
+            "@type":"Article",
+            "headline":"Fixture article",
+            "datePublished":"2026-08-01",
+            "dateModified":"2026-08-24",
+            "author":{"@type":"Person","name":"Fixture Author"},
+            "publisher":{"@type":"Organization","name":"Fixture Publisher"}
+          }</script>
+        </head><body><article><h1>Fixture article</h1><h2>Evidence</h2>
+          <p>Fixture content.</p><a href="https://www.rfc-editor.org/rfc/rfc9110.html">Source</a>
+        </article></body></html>`);
+        return;
       case "/private":
       case "/crawler-private":
         res.writeHead(200, { "content-type": "text/html" });

@@ -25,5 +25,8 @@
     "tsx": "^4.19.0",
     "typescript": "^5.9.0",
     "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "parse5": "^8.0.1"
   }
 }
