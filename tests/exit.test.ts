@@ -14,11 +14,44 @@ function blocker(kind: BlockerKind): Blocker {
 
 function makeResult(overrides: Partial<AuditResult> = {}): AuditResult {
   return {
-    schema_version: "1.0.0",
+    schema_version: "1.1.0",
     tool_version: "0.1.0",
     ruleset_version: "0.1.0",
     generated_at: "2026-01-01T00:00:00.000Z",
-    target: { requested_url: "https://example.com/", mode: "page" },
+    target: {
+      requested_url: "https://example.com/",
+      normalized_url: "https://example.com/",
+      mode: "page",
+    },
+    metadata: {
+      url_normalization: { version: "conservative-v1" },
+      sampling: {
+        applied: false,
+        method: "stable-hash",
+        hash_algorithm: "sha256",
+        seed: "geo-aeo-audit-v1",
+        selected: [],
+      },
+      public_suffix_list: {
+        used: false,
+        package_name: null,
+        package_version: null,
+        data_version: null,
+        scope_basis: "origin",
+      },
+      limits: {
+        timeoutMs: 15_000,
+        maxRedirects: 5,
+        maxPages: 25,
+        maxHeaderBytes: 32_768,
+        maxResponseBytes: 5_000_000,
+        maxDecompressedBytes: 20_000_000,
+        maxTotalBytes: 100_000_000,
+        maxSitemaps: 50,
+        maxSitemapDepth: 5,
+        concurrency: 4,
+      },
+    },
     findings: [],
     scorecards: [],
     blockers: [],

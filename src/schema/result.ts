@@ -1,5 +1,6 @@
-// Versioned result envelope. Findings/blockers are typed loosely here; later
-// tasks (rules, scorecard, report) extend these shapes behind the same envelope.
+import type { AuditLimits } from "../config.js";
+
+// Versioned result envelope shared by JSON and HTML report renderers.
 
 export type RuleResult = "pass" | "fail" | "not_applicable" | "not_tested" | "error";
 
@@ -77,7 +78,32 @@ export interface AuditResult {
   generated_at: string;
   target: {
     requested_url: string;
+    normalized_url: string;
     mode: "page" | "site";
+  };
+  metadata: {
+    url_normalization: {
+      version: string;
+    };
+    sampling: {
+      applied: boolean;
+      method: "stable-hash";
+      hash_algorithm: "sha256";
+      seed: string;
+      selected: {
+        url: string;
+        hash: string;
+        state: string;
+      }[];
+    };
+    public_suffix_list: {
+      used: boolean;
+      package_name: string | null;
+      package_version: string | null;
+      data_version: string | null;
+      scope_basis: "origin";
+    };
+    limits: AuditLimits;
   };
   findings: Finding[];
   scorecards: CategoryScorecard[];

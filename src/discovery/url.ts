@@ -1,3 +1,5 @@
+export const URL_NORMALIZATION_VERSION = "conservative-v1";
+
 /** Conservative URL normalization used for scope checks, de-duplication and sampling. */
 export function normalizeHttpUrl(raw: string, base?: string | URL): string {
   const url = base === undefined ? new URL(raw) : new URL(raw, base);

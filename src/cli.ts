@@ -1,9 +1,11 @@
 #!/usr/bin/env node
+import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { parseAuditConfig } from "./config.js";
 import { ConfigError, IncompleteAuditError } from "./errors.js";
 import { ExitCode, resolveExitCode, type ExitCodeValue } from "./exit.js";
 import { runAudit } from "./audit/run.js";
+import { renderHtmlReport } from "./report/html.js";
 import { TOOL_VERSION } from "./version.js";
 
 const USAGE = `geo-aeo — GEO/AEO static readiness audit
@@ -26,7 +28,7 @@ Exit codes:
   0  success
   1  audit completed but --fail-on threshold met
   2  CLI usage or configuration error
-  3  fetch/audit could not complete
+  3  audit or requested report output could not complete
 `;
 
 const OPTIONS = {
@@ -97,7 +99,14 @@ async function main(): Promise<ExitCodeValue> {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   }
   if (config.output.htmlPath) {
-    process.stderr.write("Note: HTML report output is not yet implemented (task 7)\n");
+    try {
+      await writeFile(config.output.htmlPath, renderHtmlReport(result), "utf8");
+    } catch (error) {
+      process.stderr.write(
+        `Error: could not write HTML report: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
+      return ExitCode.INCOMPLETE;
+    }
   }
 
   return resolveExitCode(result, config.failOn);

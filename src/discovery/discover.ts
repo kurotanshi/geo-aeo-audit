@@ -8,9 +8,8 @@ import {
 } from "../transport/safe-fetch.js";
 import { evaluateRobots, parseRobotsTxt, type ParsedRobots, type RobotsRule } from "./robots.js";
 import { parseSitemapXml } from "./sitemap.js";
-import { normalizeHttpUrl } from "./url.js";
+import { normalizeHttpUrl, URL_NORMALIZATION_VERSION } from "./url.js";
 
-export const URL_NORMALIZATION_VERSION = "conservative-v1";
 export const SAMPLING_HASH_ALGORITHM = "sha256";
 export const DEFAULT_SAMPLING_SEED = "geo-aeo-audit-v1";
 export const CRAWLER_PRODUCT_TOKEN = "geo-aeo-audit";

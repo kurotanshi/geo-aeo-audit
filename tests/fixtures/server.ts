@@ -110,6 +110,16 @@ export async function startFixture(): Promise<Fixture> {
           <p>Fixture content.</p><a href="https://www.rfc-editor.org/rfc/rfc9110.html">Source</a>
         </article></body></html>`);
         return;
+      case "/javascript-only":
+        res.writeHead(200, { "content-type": "text/html" });
+        res.end(
+          '<!doctype html><html lang="en"><head><title>App shell</title><meta name="description" content="Client-rendered fixture"></head><body><div id="app"></div><script src="/app.js"></script></body></html>',
+        );
+        return;
+      case "/unavailable":
+        res.writeHead(503, { "content-type": "text/html" });
+        res.end("<html><body>temporarily unavailable</body></html>");
+        return;
       case "/private":
       case "/crawler-private":
         res.writeHead(200, { "content-type": "text/html" });

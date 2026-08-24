@@ -1,0 +1,283 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/kurotanshi/geo-aeo-audit/schemas/audit-result.schema.json",
+  "title": "geo-aeo-audit result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tool_version",
+    "ruleset_version",
+    "generated_at",
+    "target",
+    "metadata",
+    "findings",
+    "scorecards",
+    "blockers"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.1.0" },
+    "tool_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+" },
+    "ruleset_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+" },
+    "generated_at": { "type": "string" },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested_url", "normalized_url", "mode"],
+      "properties": {
+        "requested_url": { "type": "string" },
+        "normalized_url": { "type": "string" },
+        "mode": { "enum": ["page", "site"] }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url_normalization", "sampling", "public_suffix_list", "limits"],
+      "properties": {
+        "url_normalization": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version"],
+          "properties": { "version": { "type": "string" } }
+        },
+        "sampling": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["applied", "method", "hash_algorithm", "seed", "selected"],
+          "properties": {
+            "applied": { "type": "boolean" },
+            "method": { "const": "stable-hash" },
+            "hash_algorithm": { "const": "sha256" },
+            "seed": { "type": "string" },
+            "selected": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["url", "hash", "state"],
+                "properties": {
+                  "url": { "type": "string" },
+                  "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                  "state": {
+                    "enum": [
+                      "fetched",
+                      "skipped_by_robots",
+                      "skipped_due_to_robots_unavailable",
+                      "fetch_error"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "public_suffix_list": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "used",
+            "package_name",
+            "package_version",
+            "data_version",
+            "scope_basis"
+          ],
+          "properties": {
+            "used": { "const": false },
+            "package_name": { "type": "null" },
+            "package_version": { "type": "null" },
+            "data_version": { "type": "null" },
+            "scope_basis": { "const": "origin" }
+          }
+        },
+        "limits": { "$ref": "#/definitions/limits" }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/finding" }
+    },
+    "scorecards": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/definitions/scorecard" }
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/blocker" }
+    }
+  },
+  "definitions": {
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeoutMs",
+        "maxRedirects",
+        "maxPages",
+        "maxHeaderBytes",
+        "maxResponseBytes",
+        "maxDecompressedBytes",
+        "maxTotalBytes",
+        "maxSitemaps",
+        "maxSitemapDepth",
+        "concurrency"
+      ],
+      "properties": {
+        "timeoutMs": { "type": "integer", "minimum": 1 },
+        "maxRedirects": { "type": "integer", "minimum": 0 },
+        "maxPages": { "type": "integer", "minimum": 1 },
+        "maxHeaderBytes": { "type": "integer", "minimum": 1 },
+        "maxResponseBytes": { "type": "integer", "minimum": 1 },
+        "maxDecompressedBytes": { "type": "integer", "minimum": 1 },
+        "maxTotalBytes": { "type": "integer", "minimum": 1 },
+        "maxSitemaps": { "type": "integer", "minimum": 1 },
+        "maxSitemapDepth": { "type": "integer", "minimum": 0 },
+        "concurrency": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "result",
+        "severity",
+        "category",
+        "evidence",
+        "rationale",
+        "recommendation",
+        "evidence_kind",
+        "score_impact",
+        "claim_scope",
+        "subject_url"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "result": { "$ref": "#/definitions/rule_result" },
+        "severity": { "enum": ["info", "warning", "error", "blocker"] },
+        "category": { "$ref": "#/definitions/category" },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "rationale": { "type": "string" },
+        "recommendation": { "type": "string" },
+        "evidence_kind": {
+          "enum": [
+            "official_behavior",
+            "official_recommendation",
+            "standard",
+            "empirical_observation",
+            "heuristic"
+          ]
+        },
+        "score_impact": { "enum": ["scored", "informational", "experimental"] },
+        "claim_scope": { "type": "array", "items": { "type": "string" } },
+        "source_url": { "type": "string" },
+        "subject_url": { "type": "string" }
+      }
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "rule_id",
+        "evidence",
+        "applies_to",
+        "not_asserted_for",
+        "subject_url"
+      ],
+      "properties": {
+        "kind": { "enum": ["transport_or_protocol", "provider_eligibility"] },
+        "rule_id": { "type": "string" },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "applies_to": { "type": "array", "items": { "type": "string" } },
+        "not_asserted_for": { "type": "array", "items": { "type": "string" } },
+        "evidence_kind": {
+          "enum": [
+            "official_behavior",
+            "official_recommendation",
+            "standard",
+            "empirical_observation",
+            "heuristic"
+          ]
+        },
+        "subject_url": { "type": "string" }
+      }
+    },
+    "scorecard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "score",
+        "measurement_coverage",
+        "finding_counts",
+        "excluded_from_score"
+      ],
+      "properties": {
+        "category": { "$ref": "#/definitions/category" },
+        "score": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "unit", "passed", "failed", "denominator"],
+          "properties": {
+            "value": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+            "unit": { "const": "percent" },
+            "passed": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 },
+            "denominator": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "measurement_coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "unit", "measured", "applicable", "not_tested", "errors"],
+          "properties": {
+            "value": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+            "unit": { "const": "percent" },
+            "measured": { "type": "integer", "minimum": 0 },
+            "applicable": { "type": "integer", "minimum": 0 },
+            "not_tested": { "type": "integer", "minimum": 0 },
+            "errors": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "finding_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pass", "fail", "not_applicable", "not_tested", "error"],
+          "properties": {
+            "pass": { "type": "integer", "minimum": 0 },
+            "fail": { "type": "integer", "minimum": 0 },
+            "not_applicable": { "type": "integer", "minimum": 0 },
+            "not_tested": { "type": "integer", "minimum": 0 },
+            "error": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "excluded_from_score": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["informational", "experimental", "unclassified", "unmeasured"],
+          "properties": {
+            "informational": { "type": "integer", "minimum": 0 },
+            "experimental": { "type": "integer", "minimum": 0 },
+            "unclassified": { "type": "integer", "minimum": 0 },
+            "unmeasured": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "rule_result": {
+      "enum": ["pass", "fail", "not_applicable", "not_tested", "error"]
+    },
+    "category": {
+      "enum": [
+        "access_and_eligibility",
+        "discoverability",
+        "parseability",
+        "freshness_and_entity",
+        "source_and_evidence"
+      ]
+    }
+  }
+}

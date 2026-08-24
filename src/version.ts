@@ -7,7 +7,7 @@ const pkg = createRequire(import.meta.url)("../package.json") as { version: stri
 export const TOOL_VERSION = pkg.version;
 
 /** Version of the emitted result JSON envelope. Bump on breaking schema changes. */
-export const SCHEMA_VERSION = "1.0.0";
+export const SCHEMA_VERSION = "1.1.0";
 
 /** Version of the audit ruleset (registry + rule semantics). Bump when rules change. */
 export const RULESET_VERSION = "0.2.0";

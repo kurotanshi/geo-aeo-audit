@@ -109,7 +109,7 @@ describe("technical eligibility rules", () => {
       productScopes: ["test_scope"],
       officialSourceUrl: "https://developers.openai.com/api/docs/bots",
       checkedAt: "2026-08-24",
-      rulesetVersion: "0.1.0",
+      rulesetVersion: "0.2.0",
       officialSummary: "Test-only explicit applicability.",
     };
     const result = auditTechnicalEligibility(

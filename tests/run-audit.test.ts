@@ -33,6 +33,23 @@ describe("runAudit technical integration", () => {
       now: () => new Date("2026-08-24T00:00:00.000Z"),
     });
     expect(result.generated_at).toBe("2026-08-24T00:00:00.000Z");
+    expect(result.target.normalized_url).toBe(`${fx.origin}/site-entry`);
+    expect(result.metadata).toMatchObject({
+      url_normalization: { version: "conservative-v1" },
+      sampling: {
+        applied: false,
+        method: "stable-hash",
+        hash_algorithm: "sha256",
+        selected: [],
+      },
+      public_suffix_list: {
+        used: false,
+        package_name: null,
+        package_version: null,
+        data_version: null,
+        scope_basis: "origin",
+      },
+    });
     expect(result.findings).toContainEqual(
       expect.objectContaining({
         id: "technical.robots.openai.oai_searchbot",
@@ -93,6 +110,27 @@ describe("runAudit technical integration", () => {
     );
   });
 
+  it("reports an HTTP-unavailable page as a transport blocker without content failures", async () => {
+    const result = await runAudit(config(`${fx.origin}/unavailable`), { transportDeps: allowLoopback });
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ id: "technical.http_status", result: "fail", severity: "blocker" }),
+    );
+    expect(result.blockers).toContainEqual(
+      expect.objectContaining({ kind: "transport_or_protocol", rule_id: "technical.http_status" }),
+    );
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ id: "content.title", result: "not_tested" }),
+    );
+  });
+
+  it("preserves JavaScript-only uncertainty as a rendering limitation", async () => {
+    const result = await runAudit(config(`${fx.origin}/javascript-only`), { transportDeps: allowLoopback });
+    const initialHtml = result.findings.find((item) => item.id === "technical.initial_html_content");
+    expect(initialHtml).toMatchObject({ result: "not_tested", severity: "warning" });
+    expect(initialHtml?.rationale).toContain("需要瀏覽器渲染才能確認");
+    expect(initialHtml?.rationale).toContain("不代表內容無法被任何 AI 使用");
+  });
+
   it("audits sampled site pages and preserves a subject URL on every result", async () => {
     const result = await runAudit(config(`${fx.origin}/site-entry`, "site"), { transportDeps: allowLoopback });
     expect(result.findings.length).toBeGreaterThan(20);
@@ -111,5 +149,8 @@ describe("runAudit technical integration", () => {
         evidence: [`${fx.origin}/private: skipped_due_to_robots`],
       }),
     );
+    expect(result.metadata.sampling.applied).toBe(true);
+    expect(result.metadata.sampling.selected.length).toBeGreaterThan(0);
+    expect(result.metadata.sampling.selected.every((item) => /^[a-f0-9]{64}$/.test(item.hash))).toBe(true);
   });
 });

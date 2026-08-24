@@ -6,8 +6,8 @@
 - [x] 實作技術資格與 crawler 規則稽核：以具官方來源、查核日期及 ruleset version 的 registry 建模 agent_kind、robots 適用性與 product scope，檢查 HTTP、indexability、canonical、robots、sitemap 和 JavaScript-only 測量限制
 - [x] 實作頁面內容、實體與證據規則：檢查 metadata、語言、heading、適用的 JSON-LD、作者、日期、來源連結與更新訊號，並以五級證據種類與 claim_scope 標注每條規則
 - [x] 實作分類 scorecard 與 scoped blockers：各類別附測量覆蓋率，實驗性／資訊性項目不計分，provider eligibility blocker 帶 applies_to／not_asserted_for，且不產生宣稱代表 citation probability 的單一總分
-- [ ] 實作版本化 JSON 與無 JavaScript 的單檔 HTML 報告，呈現 findings、分類分數、覆蓋率、blockers、transport errors、測量限制與 NOT_TESTED 項目，並驗證所有不可信輸入均安全編碼
-- [ ] 完成 CLI 使用文件與端到端驗證，涵蓋單頁稽核、sitemap 取樣、robots 阻擋、SSRF、無法擷取、JavaScript-only、exit code、JSON schema 相容性及 HTML 報告可開啟性
+- [x] 實作版本化 JSON 與無 JavaScript 的單檔 HTML 報告，呈現 findings、分類分數、覆蓋率、blockers、transport errors、測量限制與 NOT_TESTED 項目，並驗證所有不可信輸入均安全編碼
+- [x] 完成 CLI 使用文件與端到端驗證，涵蓋單頁稽核、sitemap 取樣、robots 阻擋、SSRF、無法擷取、JavaScript-only、exit code、JSON schema 相容性及 HTML 報告可開啟性
 
 ## 驗收條件
 - 情境：使用者對任意公開 HTTP(S) URL 執行 `geo-aeo audit <url>`，CLI 在設定的逾時與抓取上限內完成，產生含 schema_version、tool_version、ruleset_version 及 URL 正規化／取樣雜湊／PSL 套件與資料版本的可驗證 JSON 與可直接開啟的單檔 HTML 報告。

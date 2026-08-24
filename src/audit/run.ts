@@ -1,7 +1,13 @@
 import type { AuditConfig } from "../config.js";
-import { CRAWLER_PRODUCT_TOKEN, discoverSite, type DiscoveryFetch } from "../discovery/discover.js";
+import {
+  CRAWLER_PRODUCT_TOKEN,
+  DEFAULT_SAMPLING_SEED,
+  discoverSite,
+  SAMPLING_HASH_ALGORITHM,
+  type DiscoveryFetch,
+} from "../discovery/discover.js";
 import { evaluateRobots, parseRobotsTxt, type ParsedRobots } from "../discovery/robots.js";
-import { normalizeHttpUrl } from "../discovery/url.js";
+import { normalizeHttpUrl, URL_NORMALIZATION_VERSION } from "../discovery/url.js";
 import { auditPageContent } from "../rules/content.js";
 import { auditTechnicalEligibility, type TechnicalAuditResult } from "../rules/technical.js";
 import { buildScorecards } from "../scorecard.js";
@@ -20,6 +26,7 @@ export interface RunAuditDeps {
 export async function runAudit(config: AuditConfig, deps: RunAuditDeps = {}): Promise<AuditResult> {
   const findings: Finding[] = [];
   const blockers: Blocker[] = [];
+  const selectedSamples: AuditResult["metadata"]["sampling"]["selected"] = [];
 
   if (config.mode === "site") {
     try {
@@ -29,6 +36,13 @@ export async function runAudit(config: AuditConfig, deps: RunAuditDeps = {}): Pr
         ...(deps.transportDeps === undefined ? {} : { transportDeps: deps.transportDeps }),
       });
       const robotsAvailable = discovery.robots.error === undefined && (discovery.robots.status ?? 200) < 500;
+      selectedSamples.push(
+        ...discovery.pages.map((page) => ({
+          url: page.url,
+          hash: page.hash,
+          state: page.state,
+        })),
+      );
       for (const sampled of discovery.pages) {
         let audit: TechnicalAuditResult;
         if (sampled.state === "fetch_error") {
@@ -88,7 +102,29 @@ export async function runAudit(config: AuditConfig, deps: RunAuditDeps = {}): Pr
     tool_version: TOOL_VERSION,
     ruleset_version: RULESET_VERSION,
     generated_at: (deps.now?.() ?? new Date()).toISOString(),
-    target: { requested_url: config.url, mode: config.mode },
+    target: {
+      requested_url: config.url,
+      normalized_url: normalizeHttpUrl(config.url),
+      mode: config.mode,
+    },
+    metadata: {
+      url_normalization: { version: URL_NORMALIZATION_VERSION },
+      sampling: {
+        applied: config.mode === "site",
+        method: "stable-hash",
+        hash_algorithm: SAMPLING_HASH_ALGORITHM,
+        seed: DEFAULT_SAMPLING_SEED,
+        selected: selectedSamples,
+      },
+      public_suffix_list: {
+        used: false,
+        package_name: null,
+        package_version: null,
+        data_version: null,
+        scope_basis: "origin",
+      },
+      limits: { ...config.limits },
+    },
     findings,
     scorecards: buildScorecards(findings),
     blockers,
