@@ -1,0 +1,29 @@
+{
+  "name": "geo-aeo-audit",
+  "version": "0.1.0",
+  "description": "CLI for reproducible GEO/AEO static readiness audits of public web pages",
+  "type": "module",
+  "bin": {
+    "geo-aeo": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx src/cli.ts",
+    "test": "pnpm run build && vitest run"
+  },
+  "packageManager": "pnpm@11.22.0",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.0.0"
+  }
+}

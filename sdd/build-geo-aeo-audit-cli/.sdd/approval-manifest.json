@@ -1,0 +1,60 @@
+{
+  "acceptance_conditions": [
+    "情境：使用者對任意公開 HTTP(S) URL 執行 `geo-aeo audit <url>`，CLI 在設定的逾時與抓取上限內完成，產生含 schema_version、tool_version、ruleset_version 及 URL 正規化／取樣雜湊／PSL 套件與資料版本的可驗證 JSON 與可直接開啟的單檔 HTML 報告。",
+    "情境：初始 URL、DNS 結果或任一 redirect 指向非 public global-unicast 位址時，transport 在連線前拒絕；連線只能使用已驗證 IP，HTTP Host、TLS SNI 與憑證驗證仍使用原 hostname，且不讀取環境 proxy 或在底層重新解析 hostname。",
+    "情境：DNS rebinding、IPv4-mapped IPv6、混合 public／non-public DNS 結果、非 HTTP(S) redirect、redirect loop、oversized headers、壓縮前／解壓縮後 body 超限及逾時 fixture 都 fail closed，且不會向被拒絕的目標送出連線。",
+    "情境：HTTP 錯誤、DNS 或 TLS 失敗、redirect loop 列為 transport_or_protocol finding；`noindex` 或 crawler 規則類的 provider eligibility blocker 必須帶 product scope 的 applies_to，只宣稱有 official_behavior 支撐的 scope，其餘列入 not_asserted_for。",
+    "情境：robots 適用性依每個 agent 的官方文件個別判定且 agent_kind 不推導適用性；registry 保存官方來源、查核日期與 ruleset version，官方未確認的 surface 只列風險訊號或 not_asserted_for。",
+    "情境：主要內容未出現在初始 HTML 時，報告顯示「需要瀏覽器渲染才能確認」的限制，不把它直接判定成內容不存在或無法被任何 AI 使用。",
+    "情境：使用 `--site` 時取樣管線為 discovered → scope 內 → 語法有效 → 去重 → deterministic sample → 評估 robots；被 robots 阻擋的樣本記為 skipped_by_robots，out-of-scope URL 記錄為 discovered_but_out_of_scope，兩者皆不抓取。",
+    "情境：CLI 以自己的 User-Agent 並以通用 agent 身分遵守 robots.txt；robots 允許官方 crawler 但阻擋通用 agent 時，finding 記錄官方 crawler 規則，CLI 自身則將內容稽核標為 skipped_due_to_robots 的測量限制。",
+    "情境：每項 finding 都有規則 ID、結果、嚴重度、證據、判定依據、修正建議、五級證據種類與 claim_scope；實驗性／資訊性項目不進入任何數值分數。",
+    "情境：not_applicable 與 not_tested 不計入類別分數分母，not_tested 反映於測量覆蓋率，error 顯示為測量錯誤而非 fail，非 article 頁面不因 article 規則不適用而扣分。",
+    "情境：受測頁面內容含 `</script>`、HTML、attribute 或惡意 URL payload 時，產出的 HTML 報告不執行注入內容、不產生非 HTTP(S) 外部連結，且報告本身不含 JavaScript。",
+    "情境：所有單元、fixture integration 與 CLI end-to-end 測試通過，測試不存取真實公開網站、不呼叫模型 API，也不修改受測網站。"
+  ],
+  "approval_model_version": 1,
+  "change_type": "新功能",
+  "extensions": {
+    "sdd.schema": {
+      "schema_version": 2
+    }
+  },
+  "scope": [
+    "建立獨立的 Node.js／TypeScript CLI 專案 `geo-aeo-audit`，以 `pnpm` 管理套件。第一版提供 `geo-aeo audit <url>`，不需要模型 API key，抓取公開網頁、`robots.txt` 與 sitemap，執行可重現的技術與頁面內容稽核。",
+    "預設只評測指定頁面。`--site` 模式從 site scope 內的 sitemap 取樣；site scope 定義為跟隨 redirect 後最終 URL 的 origin（scheme + hostname + effective port），預設不跨 origin。sitemap 發現的 out-of-scope URL 記錄為 `discovered_but_out_of_scope` 且不抓取。取樣管線依序為：discovered → scope 內 → 語法有效 → 去重 → stable-hash deterministic sample（URL 正規化後以穩定雜湊排序取前 N，可選固定 seed）→ 評估 robots → 本 CLI 被允許才抓取。被 robots 阻擋的 URL 保留在樣本內，記為 `skipped_by_robots` 並產生 finding，不從取樣資格中預先排除。報告保存 sampling method、seed 與 discovered／scope 內／sampled 數量。資源上限包含頁數、redirect 次數、sitemap index 遞迴深度、sitemap 數量、response headers、單一資源壓縮前與解壓縮後 bytes、總下載 bytes、逾時與併發，全部作為一級設定並寫入報告 metadata。",
+    "所有 HTTP(S) 擷取共用單一安全 transport。每次初始請求與 redirect 都重新驗證 URL、hostname、port 與 DNS 結果，只允許所有解析結果皆為 public global-unicast 的目標。transport 將連線固定到已驗證的 IP，同時保留原始 hostname作為 HTTP Host、TLS SNI 與憑證 hostname 驗證依據，禁止底層在連線時重新解析 hostname。第一版不支援 proxy，且不讀取環境中的 proxy 設定；若底層 runtime 或套件無法證明未使用 proxy 或無法固定已驗證 IP，請求必須 fail closed。每次 redirect 都消耗上限並重跑同一流程；DNS rebinding、解析結果變動、IPv4／IPv6 表示轉換及非 HTTP(S) redirect 不得繞過檢查。",
+    "靜態稽核將檢查 HTTP 狀態、redirect、canonical、indexability、robots 規則、sitemap discovery、主要內容是否出現在初始 HTML、標題與 description、語言、heading 結構、Article／Person／Organization 等適用的結構化資料、作者與日期訊號、來源連結、內容更新訊號及重複 URL 線索。",
+    "AI 存取控制檢查將 agent 建模為四種 `agent_kind`：搜尋 crawler、訓練 crawler、使用者觸發 fetcher，以及沒有自己 HTTP user agent 的 product control token（如 Google-Extended）。robots 適用性等級（applies／may_apply／generally_ignored／control_token）依各 agent 的官方文件個別判定並記錄於 agent registry；`agent_kind` 不推導 robots 適用性。第一版至少辨識 Googlebot、Google-Extended、Bingbot、OAI-SearchBot、GPTBot、ChatGPT-User、Claude-SearchBot、Claude-User、ClaudeBot、PerplexityBot 與 Perplexity-User。registry 每筆資料保存 product scope、官方來源 URL、查核日期及 ruleset version；官方文件沒有明列的 surface 不自行推論。官方確認遵守 robots 的 agent 其 robots 結果可支撐對應 scope 的 blocker；官方語意為 may_apply、generally_ignored 或未確認者，robots 結果只列為風險訊號。非標準或實驗性指令只列為資訊，不當成跨平台官方規則。",
+    "規則分為「存取與資格」「可發現性」「可解析性與內容結構」「來源與證據訊號」「新鮮度與實體」及「實驗性／資訊性」。每項 finding 包含穩定 ID、結果、嚴重度、證據、來源 URL、判定依據、修正建議、證據種類與 claim_scope。證據種類分五級：official_behavior、official_recommendation、standard、empirical_observation、heuristic。blocker 分兩類：transport_or_protocol（HTTP 錯誤、DNS／TLS 失敗、redirect loop 等）與 provider_eligibility（必須有對該 product scope 適用的 official_behavior 才可宣稱）。provider_eligibility blocker 以 product_scope registry 的 applies_to／not_asserted_for 標注；官方文件未明列的 surface 一律列入 not_asserted_for。每條規則結果為 pass／fail／not_applicable／not_tested／error；類別分數 = 通過的適用且已測規則權重和 ÷ 適用且已測規則權重和。not_applicable 與 not_tested 排除於分母；not_tested 計入該類別的測量覆蓋率；error 顯示為測量錯誤而非 fail；實驗性／資訊性項目永不進分母，只列件數與建議。不輸出聲稱可預測 AI 引用機率的單一總分。",
+    "CLI 同時輸出版本化 JSON 與單檔 HTML 報告。JSON 至少保存 schema_version、tool_version、ruleset_version，以及 URL 正規化規則版本、取樣雜湊演算法、Public Suffix List 套件與資料版本等測量 metadata。URL 正規化採保守規則：小寫 scheme 與 hostname、正規化預設 port、移除 fragment、正規化空 path；不預設移除 query 參數。HTML 報告為不含 JavaScript 的 static HTML 並附 CSP。exit code 依語意分類：成功、CLI 使用／設定錯誤、稽核完成但達到失敗門檻、擷取／稽核無法完成，各為不同 exit code，並提供 `--fail-on`（blocker／error／never）。報告以 `NOT_TESTED` 明示本工具無法驗證 provider crawler 的 network-path 可達性（例如 IP allowlist 或 WAF）。測試以本機 fixture server 及固定 HTML／robots／sitemap 樣本驗證，不修改受測網站。",
+    "可能檔案（預估）：`package.json`、`tsconfig.json`、`src/cli.ts`、`src/transport/`、`src/audit/`、`src/rules/`、`src/report/`、`src/schema/`、`tests/fixtures/`、`tests/`、`README.md`。"
+  ],
+  "short_name": "build-geo-aeo-audit-cli",
+  "tasks": [
+    {
+      "text": "建立可安裝與執行的 Node.js／TypeScript CLI 骨架、設定解析、版本化結果 schema 與測試環境，讓 `geo-aeo --help`、錯誤輸入、語意化 exit code 與 `--fail-on` 行為可自動驗證"
+    },
+    {
+      "text": "實作 fail-closed 安全 transport：逐次 URL／DNS 驗證、固定已驗證 IP、保留 Host／TLS SNI／憑證 hostname 驗證、禁用 proxy 與隱含 DNS 重解析、限制 redirect／headers／壓縮前後 bytes／逾時，並以 fixture 驗證 DNS rebinding 與非 public 位址無法連線"
+    },
+    {
+      "text": "實作 origin-scoped discovery 與 deterministic sampling：robots.txt、sitemap index 遞迴、語法驗證、去重、stable-hash 取樣，以及頁數／sitemap 數／總 bytes／併發上限，讓 out-of-scope 與 robots 阻擋樣本以明確狀態保留且不被抓取"
+    },
+    {
+      "text": "實作技術資格與 crawler 規則稽核：以具官方來源、查核日期及 ruleset version 的 registry 建模 agent_kind、robots 適用性與 product scope，檢查 HTTP、indexability、canonical、robots、sitemap 和 JavaScript-only 測量限制"
+    },
+    {
+      "text": "實作頁面內容、實體與證據規則：檢查 metadata、語言、heading、適用的 JSON-LD、作者、日期、來源連結與更新訊號，並以五級證據種類與 claim_scope 標注每條規則"
+    },
+    {
+      "text": "實作分類 scorecard 與 scoped blockers：各類別附測量覆蓋率，實驗性／資訊性項目不計分，provider eligibility blocker 帶 applies_to／not_asserted_for，且不產生宣稱代表 citation probability 的單一總分"
+    },
+    {
+      "text": "實作版本化 JSON 與無 JavaScript 的單檔 HTML 報告，呈現 findings、分類分數、覆蓋率、blockers、transport errors、測量限制與 NOT_TESTED 項目，並驗證所有不可信輸入均安全編碼"
+    },
+    {
+      "text": "完成 CLI 使用文件與端到端驗證，涵蓋單頁稽核、sitemap 取樣、robots 阻擋、SSRF、無法擷取、JavaScript-only、exit code、JSON schema 相容性及 HTML 報告可開啟性"
+    }
+  ]
+}
