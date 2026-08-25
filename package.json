@@ -1,6 +1,6 @@
 {
   "name": "geo-aeo-audit",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "CLI for reproducible GEO/AEO readiness audits and AI search citation probes of public web pages",
   "keywords": [
     "geo",
