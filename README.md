@@ -28,7 +28,13 @@ pnpm dev audit https://example.com/
 pnpm dev probe https://example.com/ --prompts prompts.json --provider openai --model gpt-5 --repeats 1
 ```
 
-安裝或 link 為套件後會提供 `geo-aeo` 執行檔。`prepare` 腳本會在安裝時編譯 `dist/`，所以不用 clone 也能直接從 repository 執行：
+套件已發佈到 npm，不用 clone 也能直接執行：
+
+```bash
+npx geo-aeo-audit audit https://example.com/
+```
+
+安裝或 link 為套件後會提供 `geo-aeo` 執行檔。`prepare` 腳本會在安裝時編譯 `dist/`，所以也可以直接從 GitHub 執行尚未發佈的版本：
 
 ```bash
 npx github:kurotanshi/geo-aeo-audit audit https://example.com/
@@ -217,7 +223,13 @@ pnpm dev audit https://example.com/
 pnpm dev probe https://example.com/ --prompts prompts.json --provider openai --model gpt-5 --repeats 1
 ```
 
-The package exposes the `geo-aeo` binary when installed or linked as a package. A `prepare` script compiles `dist/` on install, so the CLI can also run straight from the repository without a local clone:
+The package is published to npm and runs without a clone:
+
+```bash
+npx geo-aeo-audit audit https://example.com/
+```
+
+The package exposes the `geo-aeo` binary when installed or linked as a package. A `prepare` script compiles `dist/` on install, so unreleased versions can also run straight from GitHub:
 
 ```bash
 npx github:kurotanshi/geo-aeo-audit audit https://example.com/
