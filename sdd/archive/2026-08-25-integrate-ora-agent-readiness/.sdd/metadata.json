@@ -1,0 +1,119 @@
+{
+  "approval": {
+    "approval_model_version": 1,
+    "manifest_sha256": "69f73503a8475113ebbc238c4eea7cfa55ab094e92c675027da42150ba40f8e2",
+    "state": "active"
+  },
+  "attestation": {
+    "attestation_version": 1,
+    "projection": {
+      "metadata": {
+        "approval": {
+          "approval_model_version": 1,
+          "manifest_sha256": "69f73503a8475113ebbc238c4eea7cfa55ab094e92c675027da42150ba40f8e2",
+          "state": "active"
+        },
+        "last_operation": {
+          "kind": "archive",
+          "operation_id": "b587dff8d49930d0d9360411ad17a30b13ca3ba9ba6598d0fcfee605a4905c61"
+        },
+        "metadata_version": 1,
+        "revision": null,
+        "terminal": {
+          "archive_date": "2026-08-25",
+          "destination_directory": "2026-08-25-integrate-ora-agent-readiness",
+          "operation": {
+            "kind": "archive",
+            "operation_id": "b587dff8d49930d0d9360411ad17a30b13ca3ba9ba6598d0fcfee605a4905c61"
+          },
+          "short_name": "integrate-ora-agent-readiness",
+          "source_snapshot": {
+            "proposal_sha256": "47d5c45955b16048908978ac6d14e83ef91155a38c208f0bfe9aefb00b732266",
+            "snapshot_digest": "e1139e27e72c46301c18747dab630bfb9c7cdb28e0be4c062b05faafe3c0515a",
+            "snapshot_version": 1,
+            "tasks_sha256": "70e6d7476ccd07ce60b03cf4abe3b5ca19ab055c7361c7ec1a9ba9f2f4c96d01"
+          },
+          "source_status": "approved",
+          "summary": "新增八條參考 Ora essentials 的本地 audit 規則（ruleset 0.3.0）、Ora check crosswalk 與免 key 的 geo-aeo ora 命令（JSON envelope＋安全 HTML 報告），全部以本地 fixture 與 mock fetch 驗證",
+          "terminal_metadata_version": 1,
+          "terminal_status": "completed",
+          "timestamp": "2026-08-25T05:37:38Z"
+        }
+      },
+      "status": "completed",
+      "tasks": [
+        {
+          "completed": true,
+          "ordinal": 1
+        },
+        {
+          "completed": true,
+          "ordinal": 2
+        },
+        {
+          "completed": true,
+          "ordinal": 3
+        },
+        {
+          "completed": true,
+          "ordinal": 4
+        },
+        {
+          "completed": true,
+          "ordinal": 5
+        },
+        {
+          "completed": true,
+          "ordinal": 6
+        },
+        {
+          "completed": true,
+          "ordinal": 7
+        },
+        {
+          "completed": true,
+          "ordinal": 8
+        },
+        {
+          "completed": true,
+          "ordinal": 9
+        },
+        {
+          "completed": true,
+          "ordinal": 10
+        }
+      ]
+    },
+    "projection_sha256": "5d3a1f812ab479abacf9d96b8cff0a889b93a9859327cbd6e329950431d5df61"
+  },
+  "last_operation": {
+    "kind": "archive",
+    "operation_id": "b587dff8d49930d0d9360411ad17a30b13ca3ba9ba6598d0fcfee605a4905c61"
+  },
+  "metadata_version": 1,
+  "revision": null,
+  "terminal": {
+    "archive_date": "2026-08-25",
+    "destination_directory": "2026-08-25-integrate-ora-agent-readiness",
+    "operation": {
+      "kind": "archive",
+      "operation_id": "b587dff8d49930d0d9360411ad17a30b13ca3ba9ba6598d0fcfee605a4905c61"
+    },
+    "short_name": "integrate-ora-agent-readiness",
+    "source_snapshot": {
+      "proposal_sha256": "47d5c45955b16048908978ac6d14e83ef91155a38c208f0bfe9aefb00b732266",
+      "snapshot_digest": "e1139e27e72c46301c18747dab630bfb9c7cdb28e0be4c062b05faafe3c0515a",
+      "snapshot_version": 1,
+      "tasks_sha256": "70e6d7476ccd07ce60b03cf4abe3b5ca19ab055c7361c7ec1a9ba9f2f4c96d01"
+    },
+    "source_status": "approved",
+    "summary": "新增八條參考 Ora essentials 的本地 audit 規則（ruleset 0.3.0）、Ora check crosswalk 與免 key 的 geo-aeo ora 命令（JSON envelope＋安全 HTML 報告），全部以本地 fixture 與 mock fetch 驗證",
+    "terminal_metadata_version": 1,
+    "terminal_status": "completed",
+    "timestamp": "2026-08-25T05:37:38Z"
+  },
+  "writer": {
+    "engine": "sdd-workflow",
+    "version": "1.3.0"
+  }
+}
