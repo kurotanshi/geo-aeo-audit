@@ -15,6 +15,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "typecheck": "tsc --noEmit",
     "dev": "tsx src/cli.ts",
     "test": "pnpm run build && vitest run"
