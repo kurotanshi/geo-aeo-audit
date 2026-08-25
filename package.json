@@ -24,7 +24,8 @@
   "author": "Kuro Hsu",
   "type": "module",
   "bin": {
-    "geo-aeo": "dist/cli.js"
+    "geo-aeo": "dist/cli.js",
+    "geo-aeo-audit": "dist/cli.js"
   },
   "files": [
     "dist",
