@@ -1,0 +1,115 @@
+{
+  "approval": {
+    "approval_model_version": 1,
+    "manifest_sha256": "ff6281e0d085742bdae7fe591a43a2a342a49e8f37165abd5ab8a6b109a3c2c7",
+    "state": "active"
+  },
+  "attestation": {
+    "attestation_version": 1,
+    "projection": {
+      "metadata": {
+        "approval": {
+          "approval_model_version": 1,
+          "manifest_sha256": "ff6281e0d085742bdae7fe591a43a2a342a49e8f37165abd5ab8a6b109a3c2c7",
+          "state": "active"
+        },
+        "last_operation": {
+          "kind": "archive",
+          "operation_id": "3119ff74ba3ce51e461b31011e680be3d40c270cb4074f1190f6c938d00a59b1"
+        },
+        "metadata_version": 1,
+        "revision": null,
+        "terminal": {
+          "archive_date": "2026-08-25",
+          "destination_directory": "2026-08-25-add-citation-probe",
+          "operation": {
+            "kind": "archive",
+            "operation_id": "3119ff74ba3ce51e461b31011e680be3d40c270cb4074f1190f6c938d00a59b1"
+          },
+          "short_name": "add-citation-probe",
+          "source_snapshot": {
+            "proposal_sha256": "ebbbd320b5596db6d6dc585fdcf5a6f9cc36eb6a1c1a7559148d21f78bfcae35",
+            "snapshot_digest": "4a80dce5f0d419aa556b77e2dd68ef40331d6c4c9450a3d054b741dce406e203",
+            "snapshot_version": 1,
+            "tasks_sha256": "6f274f1c0b7e04585ca537a61c85dd0acf3cafdcb52468791a12ef3654790f57"
+          },
+          "source_status": "approved",
+          "summary": "新增 geo-aeo probe 子命令：OpenAI/Anthropic web search citation probe，含 target alias matching、雙 view rates、source overlap、安全 HTML 報告；14 項驗收情境全數通過，128 tests 綠燈",
+          "terminal_metadata_version": 1,
+          "terminal_status": "completed",
+          "timestamp": "2026-08-25T03:01:08Z"
+        }
+      },
+      "status": "completed",
+      "tasks": [
+        {
+          "completed": true,
+          "ordinal": 1
+        },
+        {
+          "completed": true,
+          "ordinal": 2
+        },
+        {
+          "completed": true,
+          "ordinal": 3
+        },
+        {
+          "completed": true,
+          "ordinal": 4
+        },
+        {
+          "completed": true,
+          "ordinal": 5
+        },
+        {
+          "completed": true,
+          "ordinal": 6
+        },
+        {
+          "completed": true,
+          "ordinal": 7
+        },
+        {
+          "completed": true,
+          "ordinal": 8
+        },
+        {
+          "completed": true,
+          "ordinal": 9
+        }
+      ]
+    },
+    "projection_sha256": "e42b290370d7d58f9cb6108f797048dc9f3a0b1e23616041068c08d7cfae355c"
+  },
+  "last_operation": {
+    "kind": "archive",
+    "operation_id": "3119ff74ba3ce51e461b31011e680be3d40c270cb4074f1190f6c938d00a59b1"
+  },
+  "metadata_version": 1,
+  "revision": null,
+  "terminal": {
+    "archive_date": "2026-08-25",
+    "destination_directory": "2026-08-25-add-citation-probe",
+    "operation": {
+      "kind": "archive",
+      "operation_id": "3119ff74ba3ce51e461b31011e680be3d40c270cb4074f1190f6c938d00a59b1"
+    },
+    "short_name": "add-citation-probe",
+    "source_snapshot": {
+      "proposal_sha256": "ebbbd320b5596db6d6dc585fdcf5a6f9cc36eb6a1c1a7559148d21f78bfcae35",
+      "snapshot_digest": "4a80dce5f0d419aa556b77e2dd68ef40331d6c4c9450a3d054b741dce406e203",
+      "snapshot_version": 1,
+      "tasks_sha256": "6f274f1c0b7e04585ca537a61c85dd0acf3cafdcb52468791a12ef3654790f57"
+    },
+    "source_status": "approved",
+    "summary": "新增 geo-aeo probe 子命令：OpenAI/Anthropic web search citation probe，含 target alias matching、雙 view rates、source overlap、安全 HTML 報告；14 項驗收情境全數通過，128 tests 綠燈",
+    "terminal_metadata_version": 1,
+    "terminal_status": "completed",
+    "timestamp": "2026-08-25T03:01:08Z"
+  },
+  "writer": {
+    "engine": "sdd-workflow",
+    "version": "1.3.0"
+  }
+}
