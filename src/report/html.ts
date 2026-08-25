@@ -233,7 +233,7 @@ function sourceLink(value: unknown): string {
   return `<p><a href="${escapeHtml(href)}" rel="noreferrer noopener">Official or standards source</a></p>`;
 }
 
-function safeHttpUrl(value: unknown): string | null {
+export function safeHttpUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
   try {
     const url = new URL(value);
@@ -271,7 +271,7 @@ function empty(message: string): string {
   return `<p class="muted">${escapeHtml(message)}</p>`;
 }
 
-function escapeHtml(value: unknown): string {
+export function escapeHtml(value: unknown): string {
   return display(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")

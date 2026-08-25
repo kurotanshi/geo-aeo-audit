@@ -1,6 +1,6 @@
 # geo-aeo-audit
 
-`geo-aeo-audit` is a read-only CLI for reproducible GEO/AEO static-readiness audits of public HTTP(S) pages. It checks bounded technical access, crawler policies, discovery signals, static content, entities, and evidence signals without calling a model API or modifying the audited site.
+`geo-aeo-audit` is a read-only CLI for reproducible GEO/AEO observations of public HTTP(S) pages. The default `audit` command checks bounded technical access, crawler policies, discovery signals, static content, entities, and evidence signals without calling a model API. The opt-in `probe` command calls a selected provider API to observe web search and citations; it may incur provider charges.
 
 The report describes observable readiness and provider-specific eligibility controls. It does not predict citation probability and does not produce a single overall score.
 
@@ -43,6 +43,30 @@ Write only HTML:
 geo-aeo audit https://example.com/ --no-json --html audit.html
 ```
 
+### Citation probe
+
+Create a UTF-8 JSON prompt file:
+
+```json
+["Which sources explain this topic?", "What changed recently?"]
+```
+
+Set only the selected provider's credential, then run the probe:
+
+```bash
+export OPENAI_API_KEY="..."
+geo-aeo probe https://example.com/article \
+  --prompts prompts.json --provider openai --model gpt-5 \
+  --repeats 2 --locale zh-TW --country TW --timezone Asia/Taipei \
+  --html probe.html > probe.json
+```
+
+Anthropic uses `ANTHROPIC_API_KEY` and `--provider anthropic`. Supported providers are only `openai` and `anthropic`; Google Gemini is intentionally unsupported. Prompt files may contain 1–20 non-empty strings, each up to 8 KiB and 256 KiB total. Repeats must be 1–10, with at most 100 total attempts.
+
+Attempts run sequentially with no implicit retries. Anthropic `pause_turn` continuation is protocol handling, bounded to three continuations. The target URL and locally observed redirect/canonical aliases are used only for citation matching; the CLI does not inject them into prompts, domain filters, URL context, or provider tool settings.
+
+Probe JSON follows [schemas/probe-result.schema.json](schemas/probe-result.schema.json). It preserves availability status for unexposed fields, provider metadata and final responses, retrieved versus cited sources, local page/host/domain matches, recomputable dual-view rates, observable coverage, and pairwise source overlap. `--json`/`--no-json` and `--html` behave like the audit command.
+
 ### Options
 
 - `--site` — discover and audit a bounded, deterministic sample within the final URL's origin. Single-page mode is the default.
@@ -67,6 +91,8 @@ Site scope is based on the exact final origin, so a Public Suffix List is not us
 
 The HTML report contains the same audit information, inline CSS, and a restrictive Content Security Policy. It contains no JavaScript, does not embed raw JSON, HTML-encodes untrusted values, and only creates links for validated HTTP(S) source URLs.
 
+The separate probe HTML report safely encodes provider output and retains source attribution. Probe observations apply only to the named API, model, search settings, locale, and execution time. They do not represent consumer ChatGPT or Claude behavior and do not predict future citations.
+
 ### Finding results
 
 | Result | Meaning |
@@ -88,6 +114,8 @@ Every finding records an evidence kind and claim scope. `heuristic` findings are
 - Redirects, headers, compressed/decompressed responses, total bytes, sitemap traversal, page count, concurrency, and time are bounded.
 - The CLI identifies itself with its own User-Agent and follows robots.txt as the generic `geo-aeo-audit` crawler. Provider crawler rules are reported separately according to each documented product scope.
 - Site mode samples only the final origin. Out-of-scope discoveries and robots-blocked samples are not fetched.
+- Probe credentials are read only from `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` for the selected provider. Authentication headers and equivalent secrets are excluded from JSON, HTML, metadata, fixtures, and errors.
+- Probe citations are not fetched. Matching uses only the input URL, observed final redirect URL, and a robots-permitted canonical URL with PSL-backed domain comparison.
 
 ## Measurement limitations
 
@@ -99,10 +127,10 @@ Provider network-path reachability, WAF allowlists, live indexing state, ranking
 
 | Code | Meaning |
 |---|---|
-| 0 | Audit completed and the selected threshold was not met, or `--fail-on never` was used. |
+| 0 | Audit completed without meeting its threshold, or a probe completed with reportable attempt outcomes. |
 | 1 | Audit completed but the selected `--fail-on` threshold was met. |
 | 2 | CLI usage or configuration error. |
-| 3 | The audit process or requested report output could not complete. |
+| 3 | The command or requested report output could not complete. |
 
 `--fail-on blocker` returns 1 when any blocker is emitted. `--fail-on error` returns 1 for blockers or `error` findings. Ordinary non-blocking `fail` findings do not independently change the exit code. Transport failures that can be represented in a completed report are emitted as `transport_or_protocol` blockers and follow the selected threshold.
 
@@ -113,4 +141,4 @@ pnpm run typecheck
 pnpm test
 ```
 
-The test suite builds the CLI and runs unit, local-fixture integration, JSON Schema compatibility, HTML-safety, and CLI end-to-end tests. Tests do not access real public sites, call model APIs, or modify audited sites.
+The test suite builds the CLI and runs unit, synthetic provider-fixture integration, local HTTP fixtures, JSON Schema compatibility, HTML-safety, and CLI end-to-end tests. Tests do not access real public sites, call paid model APIs, or modify audited sites.

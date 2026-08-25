@@ -215,12 +215,13 @@ function auditIndexability(
   }
 }
 
-function auditCanonical(pageUrl: string, html: string, findings: Finding[]): void {
+export function auditCanonical(pageUrl: string, html: string, findings: Finding[]): string | undefined {
   const hrefs = extractTags(html, "link")
     .filter((tag) => (tag.rel ?? "").toLowerCase().split(/\s+/).includes("canonical"))
     .map((tag) => tag.href)
     .filter((href): href is string => href !== undefined && href !== "");
   let result: RuleResult = "pass";
+  let canonical: string | undefined;
   let evidence: string[];
   let rationale: string;
   if (hrefs.length === 0) {
@@ -233,7 +234,8 @@ function auditCanonical(pageUrl: string, html: string, findings: Finding[]): voi
     rationale = "Multiple canonical declarations are ambiguous.";
   } else {
     try {
-      evidence = [`Canonical URL: ${normalizeHttpUrl(hrefs[0]!, pageUrl)}`];
+      canonical = normalizeHttpUrl(hrefs[0]!, pageUrl);
+      evidence = [`Canonical URL: ${canonical}`];
       rationale = "The initial HTML contains one syntactically valid canonical URL.";
     } catch {
       result = "fail";
@@ -254,6 +256,7 @@ function auditCanonical(pageUrl: string, html: string, findings: Finding[]): voi
       source_url: "https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls",
     }),
   );
+  return canonical;
 }
 
 function auditProviderRobots(

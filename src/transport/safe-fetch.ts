@@ -34,6 +34,13 @@ export interface SafeResponse {
   ipFamily: number;
 }
 
+export interface SafeFetchOptions {
+  limits: AuditLimits;
+  userAgent?: string;
+  deps?: TransportDeps;
+  allowedOrigin?: string;
+}
+
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 async function defaultResolve(hostname: string): Promise<ResolvedAddress[]> {
@@ -212,7 +219,7 @@ function hop(target: URL, pin: ResolvedAddress, limits: AuditLimits, userAgent: 
  */
 export async function safeFetch(
   rawUrl: string,
-  opts: { limits: AuditLimits; userAgent?: string; deps?: TransportDeps; allowedOrigin?: string },
+  opts: SafeFetchOptions,
 ): Promise<SafeResponse> {
   const resolve = opts.deps?.resolve ?? defaultResolve;
   const isPublic = opts.deps?.isPublic ?? isPublicUnicastIp;

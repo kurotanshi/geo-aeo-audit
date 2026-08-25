@@ -1,0 +1,238 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/kurotanshi/geo-aeo-audit/schemas/probe-result.schema.json",
+  "title": "geo-aeo citation probe result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "tool_version", "generated_at", "experiment", "target", "attempts", "rates", "source_overlaps", "limitations"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "tool_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+" },
+    "generated_at": { "type": "string" },
+    "experiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "requested_model", "adapter_version", "api_surface", "prompts", "repeats", "search_settings", "timeout_ms"],
+      "properties": {
+        "provider": { "$ref": "#/definitions/provider" },
+        "requested_model": { "type": "string" },
+        "adapter_version": { "type": "string" },
+        "api_surface": { "type": "string" },
+        "prompts": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string", "minLength": 1 } },
+        "repeats": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "search_settings": { "$ref": "#/definitions/searchSettings" },
+        "timeout_ms": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "target": { "$ref": "#/definitions/target" },
+    "attempts": { "type": "array", "maxItems": 100, "items": { "$ref": "#/definitions/attempt" } },
+    "rates": { "type": "array", "items": { "$ref": "#/definitions/rate" } },
+    "source_overlaps": { "type": "array", "items": { "$ref": "#/definitions/overlap" } },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "definitions": {
+    "provider": { "enum": ["openai", "anthropic"] },
+    "availabilityStatus": { "enum": ["present", "not_used", "not_exposed", "unavailable"] },
+    "searchStatus": { "enum": ["used", "not_used", "tool_error", "not_exposed", "unavailable"] },
+    "availability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "status"],
+      "properties": { "value": {}, "status": { "$ref": "#/definitions/availabilityStatus" } }
+    },
+    "searchSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "locale": { "type": "string" },
+        "country": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "timezone": { "type": "string" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested_url", "final_url", "declared_canonical", "robots", "aliases", "limitations", "public_suffix_list"],
+      "properties": {
+        "requested_url": { "type": "string" },
+        "final_url": { "$ref": "#/definitions/availability" },
+        "declared_canonical": { "$ref": "#/definitions/availability" },
+        "robots": { "enum": ["allowed", "blocked", "unavailable"] },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["url", "provenance", "hostname", "registrable_domain"],
+            "properties": {
+              "url": { "type": "string" },
+              "provenance": { "enum": ["input", "final_redirect", "declared_canonical"] },
+              "hostname": { "type": "string" },
+              "registrable_domain": { "$ref": "#/definitions/availability" }
+            }
+          }
+        },
+        "limitations": { "type": "array", "items": { "type": "string" } },
+        "public_suffix_list": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["used", "package_name", "package_version", "data_version"],
+          "properties": {
+            "used": { "const": true },
+            "package_name": { "const": "tldts" },
+            "package_version": { "type": "string" },
+            "data_version": { "type": "string" }
+          }
+        }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "title", "answer_span", "source_excerpt", "target_match"],
+      "properties": {
+        "url": { "$ref": "#/definitions/availability" },
+        "title": { "$ref": "#/definitions/availability" },
+        "answer_span": { "$ref": "#/definitions/availability" },
+        "source_excerpt": { "$ref": "#/definitions/availability" },
+        "target_match": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["level", "alias", "provenance"],
+              "properties": {
+                "level": { "enum": ["exact_input_url", "exact_final_url", "target_declared_canonical", "same_hostname", "same_registrable_domain"] },
+                "alias": { "type": "string" },
+                "provenance": { "enum": ["input", "final_redirect", "declared_canonical"] }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "normalizedResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested_model", "returned_model", "api_version", "search_tool_type", "search_tool_version", "sdk_version", "request_id", "response_id", "usage", "request_metadata", "final_response", "search_status", "refused", "search_tool_error", "retrieved_sources", "cited_sources", "search_queries", "citations"],
+      "properties": {
+        "requested_model": { "type": "string" },
+        "returned_model": { "$ref": "#/definitions/availability" },
+        "api_version": { "$ref": "#/definitions/availability" },
+        "search_tool_type": { "$ref": "#/definitions/availability" },
+        "search_tool_version": { "$ref": "#/definitions/availability" },
+        "sdk_version": { "$ref": "#/definitions/availability" },
+        "request_id": { "$ref": "#/definitions/availability" },
+        "response_id": { "$ref": "#/definitions/availability" },
+        "usage": { "$ref": "#/definitions/availability" },
+        "request_metadata": { "type": "object" },
+        "final_response": {},
+        "search_status": { "$ref": "#/definitions/searchStatus" },
+        "refused": { "type": "boolean" },
+        "search_tool_error": { "type": "boolean" },
+        "retrieved_sources": { "$ref": "#/definitions/availability" },
+        "cited_sources": { "$ref": "#/definitions/availability" },
+        "search_queries": { "$ref": "#/definitions/availability" },
+        "citations": { "type": "array", "items": { "$ref": "#/definitions/citation" } }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ordinal", "prompt_index", "repeat_index", "prompt", "provider", "adapter_version", "api_surface", "requested_model", "returned_model", "search_settings", "started_at", "finished_at", "duration_ms", "outcome", "completed", "search_status", "cited_sources_status", "target_domain_status", "citations", "response", "error"],
+      "properties": {
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "prompt_index": { "type": "integer", "minimum": 1 },
+        "repeat_index": { "type": "integer", "minimum": 1 },
+        "prompt": { "type": "string" },
+        "provider": { "$ref": "#/definitions/provider" },
+        "adapter_version": { "type": "string" },
+        "api_surface": { "type": "string" },
+        "requested_model": { "type": "string" },
+        "returned_model": { "type": ["string", "null"] },
+        "search_settings": { "$ref": "#/definitions/searchSettings" },
+        "started_at": { "type": "string" },
+        "finished_at": { "type": "string" },
+        "duration_ms": { "type": "number", "minimum": 0 },
+        "outcome": { "enum": ["completed_answer", "completed_refusal", "completed_no_search", "completed_tool_error", "provider_error", "timeout", "normalization_error"] },
+        "completed": { "type": "boolean" },
+        "search_status": { "$ref": "#/definitions/searchStatus" },
+        "cited_sources_status": { "$ref": "#/definitions/availabilityStatus" },
+        "target_domain_status": { "$ref": "#/definitions/availabilityStatus" },
+        "citations": { "type": "array", "items": { "$ref": "#/definitions/citation" } },
+        "response": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "status"],
+          "properties": {
+            "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/normalizedResponse" }] },
+            "status": { "$ref": "#/definitions/availabilityStatus" }
+          }
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "status"],
+          "properties": {
+            "value": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "message"],
+                  "properties": {
+                    "kind": { "enum": ["timeout", "provider_error", "normalization_error"] },
+                    "message": { "type": "string" }
+                  }
+                }
+              ]
+            },
+            "status": { "$ref": "#/definitions/availabilityStatus" }
+          }
+        }
+      }
+    },
+    "rate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "view", "numerator", "denominator", "value", "unknown_count", "denominator_definition", "observable_coverage"],
+      "properties": {
+        "metric": { "enum": ["search_use_rate", "any_citation_rate", "target_page_citation_rate", "target_host_citation_rate", "target_domain_citation_rate", "provider_error_rate"] },
+        "view": { "enum": ["all_attempts", "completed"] },
+        "numerator": { "type": "integer", "minimum": 0 },
+        "denominator": { "type": "integer", "minimum": 0 },
+        "value": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "unknown_count": { "type": "integer", "minimum": 0 },
+        "denominator_definition": { "type": "string" },
+        "observable_coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["measured", "total", "value"],
+          "properties": {
+            "measured": { "type": "integer", "minimum": 0 },
+            "total": { "type": "integer", "minimum": 0 },
+            "value": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "overlap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "requested_model", "returned_model", "api_surface", "search_settings", "left_ordinal", "right_ordinal", "url_source_overlap", "domain_source_overlap"],
+      "properties": {
+        "provider": { "$ref": "#/definitions/provider" },
+        "requested_model": { "type": "string" },
+        "returned_model": { "type": ["string", "null"] },
+        "api_surface": { "type": "string" },
+        "search_settings": { "$ref": "#/definitions/searchSettings" },
+        "left_ordinal": { "type": "integer", "minimum": 1 },
+        "right_ordinal": { "type": "integer", "minimum": 1 },
+        "url_source_overlap": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "domain_source_overlap": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}
