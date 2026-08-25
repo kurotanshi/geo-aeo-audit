@@ -94,6 +94,10 @@ export function renderHtmlReport(result: AuditResult, language: HtmlLanguage = "
     .skip-link { position: absolute; left: 1rem; top: -5rem; padding: .6rem .8rem; background: var(--surface); z-index: 1; }
     .skip-link:focus { top: 1rem; }
     .report-header { padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+    .report-nav { display: flex; gap: .25rem 1rem; overflow-x: auto; padding: .8rem 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .report-nav a { color: var(--muted); font-size: .9rem; font-weight: 700; text-decoration: none; }
+    .report-nav a:hover { color: var(--accent); text-decoration: underline; }
+    section[id] { scroll-margin-top: 1rem; }
     .table-scroll { margin: 1rem 0; overflow-x: auto; }
     .wide-table { min-width: 42rem; }
     .disclosure { margin: 1rem 0; border: 1px solid var(--border); border-radius: .5rem; }
@@ -120,6 +124,8 @@ export function renderHtmlReport(result: AuditResult, language: HtmlLanguage = "
     .status.result-not-applicable { color: var(--neutral); background: var(--neutral-bg); }
     .finding-content { padding: 0 1rem 1rem; border-top: 1px solid var(--border); }
     .finding-subject { margin: .8rem 0; color: var(--muted); }
+    .recommendation { margin: 1rem 0 0; padding: .75rem 1rem; background: var(--warning-bg); border-inline-start: .25rem solid var(--warning); }
+    .recommendation h3 { margin: 0; }
     .finding-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 1fr); gap: 1.25rem; }
     .finding-panel { min-width: 0; padding-top: 1rem; }
     .finding-panel h3 { font-size: 1rem; }
@@ -136,7 +142,7 @@ export function renderHtmlReport(result: AuditResult, language: HtmlLanguage = "
     @media print {
       :root { color-scheme: light; --page: #fff; --surface: #fff; --surface-muted: #f3f4f6; --text: #111827; --muted: #4b5563; --border: #c7ccd3; }
       body { max-width: none; padding: 0; }
-      .skip-link { display: none; }
+      .skip-link, .report-nav { display: none; }
       .finding { break-inside: avoid; }
     }
   </style>
@@ -152,14 +158,17 @@ export function renderHtmlReport(result: AuditResult, language: HtmlLanguage = "
       "分類分數彙整已量測的靜態規則；它們不是引用機率的估計，也不會合併成單一總分。",
     )}</p>
   </header>
+  <nav class="report-nav" aria-label="${text(language, "Report sections", "報告章節")}">
+    <a href="#scorecards">${text(language, "Scores", "分數")}</a><a href="#blockers">${text(language, "Blockers", "阻擋問題")}</a><a href="#limitations">${text(language, "Limitations", "量測限制")}</a><a href="#findings">${text(language, "Findings", "檢查結果")}</a><a href="#metadata">${text(language, "Metadata", "中繼資料")}</a>
+  </nav>
   <main id="report-content">
-    ${renderVersions(result, language)}
     ${renderScorecards(result.scorecards, language)}
     ${renderBlockers(result.blockers, language)}
     ${renderTransportErrors(transportErrors, language)}
     ${renderLimitations(measurementLimitations, language)}
     ${renderNotTested(notTested, language)}
     ${renderFindings(result.findings, language)}
+    ${renderVersions(result, language)}
   </main>
 </body>
 </html>
@@ -169,7 +178,7 @@ export function renderHtmlReport(result: AuditResult, language: HtmlLanguage = "
 function renderVersions(result: AuditResult, language: HtmlLanguage): string {
   const metadata = result.metadata;
   const psl = metadata.public_suffix_list;
-  return `<section>
+  return `<section id="metadata">
     <h2>${text(language, "Report metadata", "報告中繼資料")}</h2>
     <div class="table-scroll"><table>
       <tbody>
@@ -220,17 +229,17 @@ function renderSamples(samples: AuditResult["metadata"]["sampling"]["selected"],
 }
 
 function renderScorecards(scorecards: readonly CategoryScorecard[], language: HtmlLanguage): string {
-  return `<section>
-    <h2>${text(language, "Category scorecards", "分類計分卡")}</h2>
+  return `<section id="scorecards">
+    <h2>${text(language, "Category scorecards", "各類檢查分數")}</h2>
     <div class="cards">${scorecards
       .map(
         (card) => `<article class="card">
           <h3>${escapeHtml(valueText(language, card.category))}</h3>
           <div class="metric">${percentage(card.score.value, language)}</div>
           <p>${card.score.passed} ${text(language, "passed", "通過")} / ${card.score.failed} ${text(language, "failed", "未通過")} / ${card.score.denominator} ${text(language, "scored", "已計分")}</p>
-          <p>${text(language, "Measurement coverage", "量測涵蓋率")}：<strong>${percentage(card.measurement_coverage.value, language)}</strong></p>
-          <p>${card.measurement_coverage.measured} ${text(language, "measured", "已量測")} / ${card.measurement_coverage.applicable} ${text(language, "applicable", "適用")}；${card.measurement_coverage.not_tested} ${text(language, "NOT_TESTED", "未測試")}；${card.measurement_coverage.errors} ${text(language, "errors", "錯誤")}</p>
-          <p class="muted">${text(language, "Excluded", "排除於計分之外")}：${card.excluded_from_score.informational} ${text(language, "informational", "資訊性")}、${card.excluded_from_score.experimental} ${text(language, "experimental", "實驗性")}、${card.excluded_from_score.unclassified} ${text(language, "unclassified", "未分類")}、${card.excluded_from_score.unmeasured} ${text(language, "unmeasured", "未量測")}。</p>
+          <p>${text(language, "Measurement coverage", "完成檢查比例")}：<strong>${percentage(card.measurement_coverage.value, language)}</strong></p>
+          <p>${card.measurement_coverage.measured} ${text(language, "measured", "已檢查")} / ${card.measurement_coverage.applicable} ${text(language, "applicable", "適用")}；${card.measurement_coverage.not_tested} ${text(language, "NOT_TESTED", "未能檢查")}；${card.measurement_coverage.errors} ${text(language, "errors", "檢查錯誤")}</p>
+          <p class="muted">${text(language, "Excluded", "不影響分數")}：${card.excluded_from_score.informational} ${text(language, "informational", "僅供參考")}、${card.excluded_from_score.experimental} ${text(language, "experimental", "實驗性檢查")}、${card.excluded_from_score.unclassified} ${text(language, "unclassified", "尚未分類")}、${card.excluded_from_score.unmeasured} ${text(language, "unmeasured", "未能檢查")}。</p>
         </article>`,
       )
       .join("")}</div>
@@ -238,7 +247,7 @@ function renderScorecards(scorecards: readonly CategoryScorecard[], language: Ht
 }
 
 function renderBlockers(blockers: readonly Blocker[], language: HtmlLanguage): string {
-  return `<section>
+  return `<section id="blockers">
     <h2>${text(language, "Blockers", "阻擋問題")} (${blockers.length})</h2>
     ${
       blockers.length === 0
@@ -260,7 +269,7 @@ function renderBlockers(blockers: readonly Blocker[], language: HtmlLanguage): s
 }
 
 function renderTransportErrors(blockers: readonly Blocker[], language: HtmlLanguage): string {
-  return `<section>
+  return `<section id="transport-errors">
     <h2>${text(language, "Transport and protocol errors", "傳輸與協定錯誤")} (${blockers.length})</h2>
     ${
       blockers.length === 0
@@ -278,8 +287,8 @@ function renderTransportErrors(blockers: readonly Blocker[], language: HtmlLangu
 }
 
 function renderLimitations(findings: readonly Finding[], language: HtmlLanguage): string {
-  return `<section>
-    <h2>${text(language, "Measurement limitations", "量測限制")} (${findings.length})</h2>
+  return `<section id="limitations">
+    <h2>${text(language, "Measurement limitations", "無法完整檢查的項目")} (${findings.length})</h2>
     ${
       findings.length === 0
         ? empty(text(language, "No measurement limitation or measurement error was emitted.", "未發現量測限制或量測錯誤。"))
@@ -294,8 +303,8 @@ function renderLimitations(findings: readonly Finding[], language: HtmlLanguage)
 }
 
 function renderNotTested(findings: readonly Finding[], language: HtmlLanguage): string {
-  return `<section>
-    <h2>${text(language, "NOT_TESTED items", "未測試項目")} (${findings.length})</h2>
+  return `<section id="not-tested">
+    <h2>${text(language, "NOT_TESTED items", "未能檢查的項目")} (${findings.length})</h2>
     ${
       findings.length === 0
         ? empty(text(language, "Every applicable rule was tested or reported as an error.", "所有適用規則皆已測試或已回報為錯誤。"))
@@ -311,7 +320,7 @@ function renderNotTested(findings: readonly Finding[], language: HtmlLanguage): 
 
 function renderFindings(findings: readonly Finding[], language: HtmlLanguage): string {
   return `<section id="findings">
-    <h2>${text(language, "Findings", "檢查結果")} (${findings.length})</h2>
+    <h2>${text(language, "Findings", "詳細檢查結果")} (${findings.length})</h2>
     ${
       findings.length === 0
         ? empty(text(language, "No findings were emitted.", "未產生檢查結果。"))
@@ -330,25 +339,33 @@ function renderFinding(finding: Finding, language: HtmlLanguage): string {
       <strong class="status ${result}">${escapeHtml(valueText(language, finding.result))}</strong>
     </span></summary>
     <div class="finding-content">
-      ${finding.subject_url === undefined ? "" : `<p class="finding-subject"><strong>${text(language, "Subject", "對象")}：</strong> <code>${escapeHtml(finding.subject_url)}</code></p>`}
+      ${finding.subject_url === undefined ? "" : `<p class="finding-subject"><strong>${text(language, "Subject", "檢查頁面")}：</strong> <code>${escapeHtml(finding.subject_url)}</code></p>`}
+      ${renderRecommendation(finding, translated.recommendation, language)}
       <div class="finding-grid">
         <section class="finding-panel">
-          <h3>${text(language, "Evidence and rationale", "證據與原因")}</h3>
+          <h3>${text(language, "Evidence and rationale", "檢查依據")}</h3>
           ${renderList(finding.evidence, language)}
-          <p><strong>${text(language, "Rationale", "原因")}：</strong> ${escapeHtml(translated.rationale)}</p>
+          <p><strong>${text(language, "Rationale", "判定原因")}：</strong> ${escapeHtml(translated.rationale)}</p>
         </section>
         <section class="finding-panel">
-          <h3>${text(language, "Recommendation and scope", "建議與範圍")}</h3>
-          <p>${escapeHtml(translated.recommendation)}</p>
+          <h3>${text(language, "Details and scope", "其他資訊")}</h3>
           <dl class="finding-facts">
-            <dt>${text(language, "Evidence kind", "證據類型")}</dt><dd>${escapeHtml(valueText(language, finding.evidence_kind))}</dd>
-            <dt>${text(language, "Claim scope", "主張範圍")}</dt><dd>${display(finding.claim_scope) === "" ? text(language, "None", "無") : escapeHtml(finding.claim_scope)}</dd>
+            <dt>${text(language, "Evidence kind", "判定方式")}</dt><dd>${escapeHtml(valueText(language, finding.evidence_kind))}</dd>
+            <dt>${text(language, "Claim scope", "適用範圍")}</dt><dd>${display(finding.claim_scope) === "" ? text(language, "None", "無") : escapeHtml(finding.claim_scope)}</dd>
           </dl>
           ${sourceLink(finding.source_url, language)}
         </section>
       </div>
     </div>
   </details>`;
+}
+
+function renderRecommendation(finding: Finding, recommendation: string, language: HtmlLanguage): string {
+  if (finding.result === "pass" || finding.result === "not_applicable") return "";
+  return `<aside class="recommendation">
+    <h3>${text(language, "How to improve", "改善建議")}</h3>
+    <p>${escapeHtml(recommendation)}</p>
+  </aside>`;
 }
 
 function sourceLink(value: unknown, language: HtmlLanguage): string {
@@ -405,21 +422,21 @@ const ZH_TW_VALUES: Record<string, string> = {
   pass: "通過",
   fail: "未通過",
   not_applicable: "不適用",
-  not_tested: "未測試",
-  error: "錯誤",
-  access_and_eligibility: "存取與資格",
-  discoverability: "可探索性",
-  parseability: "可解析性",
-  freshness_and_entity: "時效性與實體",
-  source_and_evidence: "來源與證據",
-  scored: "計分",
-  informational: "資訊性",
-  experimental: "實驗性",
-  official_behavior: "官方行為",
+  not_tested: "未能檢查",
+  error: "檢查錯誤",
+  access_and_eligibility: "網站能否正常存取",
+  discoverability: "頁面是否容易找到",
+  parseability: "內容是否容易讀取",
+  freshness_and_entity: "內容更新與身分資訊",
+  source_and_evidence: "資料來源與佐證",
+  scored: "會影響分數",
+  informational: "僅供參考",
+  experimental: "實驗性，不計分",
+  official_behavior: "官方規則",
   official_recommendation: "官方建議",
-  standard: "標準",
-  empirical_observation: "實證觀察",
-  heuristic: "啟發式",
+  standard: "公開標準",
+  empirical_observation: "實際觀察",
+  heuristic: "經驗判斷",
   transport_or_protocol: "傳輸或協定",
   provider_eligibility: "服務供應商資格",
 };

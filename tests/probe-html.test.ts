@@ -90,6 +90,10 @@ describe("probe HTML report", () => {
     expect(html).toContain("Source attribution");
     expect(html).toContain("Not the consumer product.");
     expect(html).not.toMatch(/<script\b/i);
+    const elements = findElements(parse(html));
+    expect(elements.some((element) => element.tagName === "main")).toBe(true);
+    expect(elements.some((element) => element.tagName === "nav")).toBe(true);
+    expect(elements.some((element) => element.tagName === "details")).toBe(true);
   });
 
   it("escapes provider data and emits only safe source links", () => {
@@ -99,8 +103,15 @@ describe("probe HTML report", () => {
     expect(elements.some((element) => element.tagName === "script")).toBe(false);
     expect(elements.every((element) => element.attrs.every((attribute) => !attribute.name.startsWith("on")))).toBe(true);
     const links = elements.filter((element) => element.tagName === "a");
-    expect(links).toHaveLength(1);
-    expect(links[0]?.attrs.find((attribute) => attribute.name === "href")?.value).toMatch(/^https:\/\//);
+    const externalLinks = links.filter((link) =>
+      /^https?:\/\//.test(link.attrs.find((attribute) => attribute.name === "href")?.value ?? ""),
+    );
+    expect(externalLinks).toHaveLength(1);
+    expect(externalLinks[0]?.attrs.find((attribute) => attribute.name === "href")?.value).toMatch(/^https:\/\//);
+    expect(links.every((link) => {
+      const href = link.attrs.find((attribute) => attribute.name === "href")?.value ?? "";
+      return href.startsWith("#") || /^https?:\/\//.test(href);
+    })).toBe(true);
     expect(html).not.toContain('href="javascript:');
   });
 });

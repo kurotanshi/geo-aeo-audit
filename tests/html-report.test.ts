@@ -100,11 +100,14 @@ describe("renderHtmlReport", () => {
   it("renders the report UI and finding guidance in Traditional Chinese", () => {
     const html = renderHtmlReport(maliciousResult(), "zh-TW");
     expect(html).toContain('<html lang="zh-Hant">');
-    expect(html).toContain("分類計分卡");
+    expect(html).toContain("各類檢查分數");
     expect(html).toContain("傳輸與協定錯誤");
-    expect(html).toContain("檢查結果 (2)");
+    expect(html).toContain("詳細檢查結果 (2)");
+    expect(html).toContain("內容是否容易讀取 · 會影響分數");
+    expect(html).toContain("改善建議");
+    expect(html.match(/class="recommendation"/g)).toHaveLength(1);
     expect(html).toContain("文章提供至少一個可從外部解析的來源連結。");
-    expect(html).toContain("無需變更。");
+    expect(html).not.toContain("無需變更。");
   });
 
   it("renders findings as keyboard-accessible disclosure cards", () => {
@@ -122,6 +125,19 @@ describe("renderHtmlReport", () => {
     expect(findings[1]?.attrs.some((attribute) => attribute.name === "open")).toBe(false);
     expect(elements.filter((element) => element.tagName === "summary")).toHaveLength(3);
     expect(elements.some((element) => element.tagName === "main")).toBe(true);
+    expect(elements.some((element) => element.tagName === "nav")).toBe(true);
+  });
+
+  it("highlights an improvement recommendation for failed checks", () => {
+    const result = maliciousResult();
+    const finding = result.findings[0]!;
+    finding.result = "fail";
+    finding.recommendation = "Add a clear primary heading.";
+
+    const html = renderHtmlReport(result, "zh-TW");
+    expect(html).toContain('class="finding result-fail" open');
+    expect(html).toContain("改善建議");
+    expect(html).toContain("Add a clear primary heading.");
   });
 
   it("escapes untrusted text and emits only safe HTTP(S) links", () => {
@@ -135,10 +151,13 @@ describe("renderHtmlReport", () => {
     ).toBe(true);
 
     const links = elements.filter((element) => element.tagName === "a");
-    expect(links).toHaveLength(2);
+    const externalLinks = links.filter((link) =>
+      /^https?:\/\//.test(link.attrs.find((attribute) => attribute.name === "href")?.value ?? ""),
+    );
+    expect(externalLinks).toHaveLength(1);
     for (const link of links) {
       const href = link.attrs.find((attribute) => attribute.name === "href")?.value;
-      expect(href === "#report-content" || /^https?:\/\//.test(href ?? "")).toBe(true);
+      expect(href?.startsWith("#") || /^https?:\/\//.test(href ?? "")).toBe(true);
     }
     expect(html).not.toContain('href="javascript:');
   });

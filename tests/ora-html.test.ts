@@ -58,6 +58,9 @@ describe("Ora HTML report", () => {
     expect(html).toContain("point-in-time snapshot");
     expect(html).toContain("not equivalent");
     expect(html).not.toMatch(/<script\b/i);
+    const elements = findElements(parse(html));
+    expect(elements.some((element) => element.tagName === "main")).toBe(true);
+    expect(elements.some((element) => element.tagName === "nav")).toBe(true);
   });
 
   it("preserves top-fix order and escapes untrusted values", () => {
@@ -71,8 +74,15 @@ describe("Ora HTML report", () => {
 
   it("creates links only for credential-free HTTP(S) URLs", () => {
     const links = findElements(parse(renderOraHtmlReport(result()))).filter((element) => element.tagName === "a");
-    expect(links).toHaveLength(1);
-    expect(links[0]?.attrs.find((attribute) => attribute.name === "href")?.value).toBe("https://example.com/spec");
+    const externalLinks = links.filter((link) =>
+      /^https?:\/\//.test(link.attrs.find((attribute) => attribute.name === "href")?.value ?? ""),
+    );
+    expect(externalLinks).toHaveLength(1);
+    expect(externalLinks[0]?.attrs.find((attribute) => attribute.name === "href")?.value).toBe("https://example.com/spec");
+    expect(links.every((link) => {
+      const href = link.attrs.find((attribute) => attribute.name === "href")?.value ?? "";
+      return href.startsWith("#") || /^https?:\/\//.test(href);
+    })).toBe(true);
   });
 });
 
