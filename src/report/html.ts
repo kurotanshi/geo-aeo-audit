@@ -27,28 +27,123 @@ export function renderHtmlReport(result: AuditResult, language: HtmlLanguage = "
   <meta http-equiv="Content-Security-Policy" content="${CSP}">
   <title>${text(language, "GEO/AEO audit", "GEO/AEO 稽核報告")} — ${escapeHtml(result.target.normalized_url)}</title>
   <style>
-    :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; }
-    body { margin: 0 auto; max-width: 1120px; padding: 2rem; line-height: 1.5; }
-    h1, h2 { line-height: 1.2; }
-    h2 { margin-top: 2.5rem; border-bottom: 1px solid #8886; padding-bottom: .35rem; }
-    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-    th, td { border: 1px solid #8886; padding: .55rem; text-align: left; vertical-align: top; }
-    th { background: #8882; }
-    code { overflow-wrap: anywhere; }
-    ul { margin: .25rem 0; padding-left: 1.25rem; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; }
-    .card { border: 1px solid #8886; border-radius: .5rem; padding: 1rem; }
-    .metric { font-size: 1.55rem; font-weight: 700; }
-    .muted { color: #777; }
-    .result-pass { color: #18794e; }
-    .result-fail, .result-error { color: #b42318; }
-    .result-not-tested { color: #9a6700; }
-    .result-not-applicable { color: #667085; }
-    @media (max-width: 720px) { body { padding: 1rem; } table { display: block; overflow-x: auto; } }
+    :root {
+      color-scheme: light dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --page: #f5f7fa;
+      --surface: #ffffff;
+      --surface-muted: #f0f3f7;
+      --text: #182230;
+      --muted: #5d6978;
+      --border: #ccd4df;
+      --accent: #275dad;
+      --focus: #1769d2;
+      --pass: #087443;
+      --pass-bg: #e8f7ef;
+      --fail: #b42318;
+      --fail-bg: #fff0ee;
+      --warning: #8a5700;
+      --warning-bg: #fff4d6;
+      --neutral: #546274;
+      --neutral-bg: #edf1f5;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #111820;
+        --surface: #18212b;
+        --surface-muted: #222d39;
+        --text: #edf2f7;
+        --muted: #b3bfcc;
+        --border: #3b4958;
+        --accent: #8bb9ff;
+        --focus: #9bc3ff;
+        --pass: #76d6a6;
+        --pass-bg: #173a2a;
+        --fail: #ff9b93;
+        --fail-bg: #48231f;
+        --warning: #f5c66b;
+        --warning-bg: #443717;
+        --neutral: #c5ced8;
+        --neutral-bg: #303b47;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--page); }
+    body {
+      margin: 0 auto;
+      max-width: 1200px;
+      padding: clamp(1rem, 4vw, 3rem);
+      color: var(--text);
+      background: var(--surface);
+      line-height: 1.6;
+    }
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { margin: 0; font-size: clamp(1.75rem, 4vw, 2.6rem); letter-spacing: -.025em; }
+    h2 { margin-top: 2.75rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+    h3 { margin: 0 0 .75rem; }
+    a { color: var(--accent); text-underline-offset: .15em; }
+    a:hover { text-decoration-thickness: .15em; }
+    :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; word-break: break-word; }
+    pre { overflow-x: auto; padding: 1rem; background: var(--surface-muted); border-radius: .5rem; }
+    ul { margin: .4rem 0; padding-left: 1.35rem; }
+    p { margin: .55rem 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid var(--border); padding: .65rem .75rem; text-align: left; vertical-align: top; }
+    th { background: var(--surface-muted); }
+    .skip-link { position: absolute; left: 1rem; top: -5rem; padding: .6rem .8rem; background: var(--surface); z-index: 1; }
+    .skip-link:focus { top: 1rem; }
+    .report-header { padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+    .table-scroll { margin: 1rem 0; overflow-x: auto; }
+    .wide-table { min-width: 42rem; }
+    .disclosure { margin: 1rem 0; border: 1px solid var(--border); border-radius: .5rem; }
+    .disclosure > summary { cursor: pointer; padding: .75rem 1rem; font-weight: 700; }
+    .disclosure > :not(summary) { margin-right: 1rem; margin-left: 1rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 1rem; }
+    .card { border: 1px solid var(--border); border-radius: .65rem; padding: 1rem; background: var(--surface); }
+    .metric { font-size: 1.55rem; font-weight: 750; }
+    .muted { color: var(--muted); }
+    .finding-list { display: grid; gap: .75rem; }
+    .finding { border: 1px solid var(--border); border-inline-start: .3rem solid var(--neutral); border-radius: .65rem; background: var(--surface); }
+    .finding.result-pass { border-inline-start-color: var(--pass); }
+    .finding.result-fail, .finding.result-error { border-inline-start-color: var(--fail); }
+    .finding.result-not-tested { border-inline-start-color: var(--warning); }
+    .finding > summary { cursor: pointer; padding: .9rem 1rem; }
+    .finding > summary:hover { background: var(--surface-muted); }
+    .finding-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; min-width: 0; }
+    .finding-title { display: grid; gap: .25rem; min-width: 0; }
+    .finding-context { color: var(--muted); font-size: .875rem; }
+    .status { flex: none; border-radius: 999px; padding: .18rem .6rem; font-size: .8rem; font-weight: 750; }
+    .status.result-pass { color: var(--pass); background: var(--pass-bg); }
+    .status.result-fail, .status.result-error { color: var(--fail); background: var(--fail-bg); }
+    .status.result-not-tested { color: var(--warning); background: var(--warning-bg); }
+    .status.result-not-applicable { color: var(--neutral); background: var(--neutral-bg); }
+    .finding-content { padding: 0 1rem 1rem; border-top: 1px solid var(--border); }
+    .finding-subject { margin: .8rem 0; color: var(--muted); }
+    .finding-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 1fr); gap: 1.25rem; }
+    .finding-panel { min-width: 0; padding-top: 1rem; }
+    .finding-panel h3 { font-size: 1rem; }
+    .finding-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .25rem .75rem; margin: .8rem 0; }
+    .finding-facts dt { color: var(--muted); }
+    .finding-facts dd { margin: 0; overflow-wrap: anywhere; }
+    @media (max-width: 720px) {
+      body { padding: 1rem .75rem; }
+      h2 { margin-top: 2.25rem; }
+      .finding-summary { display: grid; }
+      .finding-grid { grid-template-columns: 1fr; gap: 0; }
+      .status { justify-self: start; }
+    }
+    @media print {
+      :root { color-scheme: light; --page: #fff; --surface: #fff; --surface-muted: #f3f4f6; --text: #111827; --muted: #4b5563; --border: #c7ccd3; }
+      body { max-width: none; padding: 0; }
+      .skip-link { display: none; }
+      .finding { break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
-  <header>
+  <a class="skip-link" href="#report-content">${text(language, "Skip to report", "跳到報告內容")}</a>
+  <header class="report-header">
     <h1>${text(language, "GEO/AEO static readiness audit", "GEO/AEO 靜態準備度稽核")}</h1>
     <p><code>${escapeHtml(result.target.normalized_url)}</code></p>
     <p class="muted">${text(
@@ -57,13 +152,15 @@ export function renderHtmlReport(result: AuditResult, language: HtmlLanguage = "
       "分類分數彙整已量測的靜態規則；它們不是引用機率的估計，也不會合併成單一總分。",
     )}</p>
   </header>
-  ${renderVersions(result, language)}
-  ${renderScorecards(result.scorecards, language)}
-  ${renderBlockers(result.blockers, language)}
-  ${renderTransportErrors(transportErrors, language)}
-  ${renderLimitations(measurementLimitations, language)}
-  ${renderNotTested(notTested, language)}
-  ${renderFindings(result.findings, language)}
+  <main id="report-content">
+    ${renderVersions(result, language)}
+    ${renderScorecards(result.scorecards, language)}
+    ${renderBlockers(result.blockers, language)}
+    ${renderTransportErrors(transportErrors, language)}
+    ${renderLimitations(measurementLimitations, language)}
+    ${renderNotTested(notTested, language)}
+    ${renderFindings(result.findings, language)}
+  </main>
 </body>
 </html>
 `;
@@ -74,7 +171,7 @@ function renderVersions(result: AuditResult, language: HtmlLanguage): string {
   const psl = metadata.public_suffix_list;
   return `<section>
     <h2>${text(language, "Report metadata", "報告中繼資料")}</h2>
-    <table>
+    <div class="table-scroll"><table>
       <tbody>
         ${row(text(language, "Generated", "產生時間"), result.generated_at)}
         ${row(text(language, "Mode", "模式"), valueText(language, result.target.mode))}
@@ -97,9 +194,9 @@ function renderVersions(result: AuditResult, language: HtmlLanguage): string {
             : text(language, `not used; scope basis: ${psl.scope_basis}`, `未使用；範圍基準：${psl.scope_basis}`),
         )}
       </tbody>
-    </table>
+    </table></div>
     ${renderSamples(metadata.sampling.selected, language)}
-    <details>
+    <details class="disclosure">
       <summary>${text(language, "Resource limits", "資源限制")}</summary>
       <pre>${escapeHtml(JSON.stringify(metadata.limits, null, 2))}</pre>
     </details>
@@ -108,8 +205,9 @@ function renderVersions(result: AuditResult, language: HtmlLanguage): string {
 
 function renderSamples(samples: AuditResult["metadata"]["sampling"]["selected"], language: HtmlLanguage): string {
   if (samples.length === 0) return "";
-  return `<h3>${text(language, "Deterministic sample", "確定性樣本")}</h3>
-    <table>
+  return `<details class="disclosure">
+    <summary>${text(language, "Deterministic sample", "確定性樣本")} (${samples.length})</summary>
+    <div class="table-scroll"><table class="wide-table">
       <thead><tr><th>URL</th><th>SHA-256 hash</th><th>${text(language, "State", "狀態")}</th></tr></thead>
       <tbody>${samples
         .map(
@@ -117,7 +215,8 @@ function renderSamples(samples: AuditResult["metadata"]["sampling"]["selected"],
             `<tr><td><code>${escapeHtml(sample.url)}</code></td><td><code>${escapeHtml(sample.hash)}</code></td><td>${escapeHtml(valueText(language, sample.state))}</td></tr>`,
         )
         .join("")}</tbody>
-    </table>`;
+    </table></div>
+  </details>`;
 }
 
 function renderScorecards(scorecards: readonly CategoryScorecard[], language: HtmlLanguage): string {
@@ -144,7 +243,7 @@ function renderBlockers(blockers: readonly Blocker[], language: HtmlLanguage): s
     ${
       blockers.length === 0
         ? empty(text(language, "No blockers were emitted.", "未發現阻擋問題。"))
-        : `<table>
+        : `<div class="table-scroll"><table class="wide-table">
       <thead><tr><th>${text(language, "Kind / rule", "類型／規則")}</th><th>${text(language, "Subject and evidence", "對象與證據")}</th><th>${text(language, "Scope", "範圍")}</th></tr></thead>
       <tbody>${blockers
         .map(
@@ -155,7 +254,7 @@ function renderBlockers(blockers: readonly Blocker[], language: HtmlLanguage): s
         </tr>`,
         )
         .join("")}</tbody>
-    </table>`
+    </table></div>`
     }
   </section>`;
 }
@@ -211,26 +310,45 @@ function renderNotTested(findings: readonly Finding[], language: HtmlLanguage): 
 }
 
 function renderFindings(findings: readonly Finding[], language: HtmlLanguage): string {
-  return `<section>
+  return `<section id="findings">
     <h2>${text(language, "Findings", "檢查結果")} (${findings.length})</h2>
     ${
       findings.length === 0
         ? empty(text(language, "No findings were emitted.", "未產生檢查結果。"))
-        : `<table>
-      <thead><tr><th>${text(language, "Rule / result", "規則／結果")}</th><th>${text(language, "Evidence and rationale", "證據與原因")}</th><th>${text(language, "Recommendation and scope", "建議與範圍")}</th></tr></thead>
-      <tbody>${findings.map((finding) => renderFinding(finding, language)).join("")}</tbody>
-    </table>`
+        : `<div class="finding-list">${findings.map((finding) => renderFinding(finding, language)).join("")}</div>`
     }
   </section>`;
 }
 
 function renderFinding(finding: Finding, language: HtmlLanguage): string {
   const translated = findingText(finding, language);
-  return `<tr>
-    <td><code>${escapeHtml(finding.id)}</code><br><strong class="${resultClass(finding.result)}">${escapeHtml(valueText(language, finding.result))}</strong><br>${escapeHtml(valueText(language, finding.category))} / ${escapeHtml(valueText(language, finding.score_impact))}${optionalCode(finding.subject_url)}</td>
-    <td>${renderList(finding.evidence, language)}<p>${escapeHtml(translated.rationale)}</p></td>
-    <td><p>${escapeHtml(translated.recommendation)}</p><p>${text(language, "Evidence kind", "證據類型")}：${escapeHtml(valueText(language, finding.evidence_kind))}</p><p>${text(language, "Claim scope", "主張範圍")}：${escapeHtml(finding.claim_scope)}</p>${sourceLink(finding.source_url, language)}</td>
-  </tr>`;
+  const expanded = finding.result !== "pass" && finding.result !== "not_applicable";
+  const result = resultClass(finding.result);
+  return `<details class="finding ${result}"${expanded ? " open" : ""}>
+    <summary><span class="finding-summary">
+      <span class="finding-title"><code>${escapeHtml(finding.id)}</code><span class="finding-context">${escapeHtml(valueText(language, finding.category))} · ${escapeHtml(valueText(language, finding.score_impact))}</span></span>
+      <strong class="status ${result}">${escapeHtml(valueText(language, finding.result))}</strong>
+    </span></summary>
+    <div class="finding-content">
+      ${finding.subject_url === undefined ? "" : `<p class="finding-subject"><strong>${text(language, "Subject", "對象")}：</strong> <code>${escapeHtml(finding.subject_url)}</code></p>`}
+      <div class="finding-grid">
+        <section class="finding-panel">
+          <h3>${text(language, "Evidence and rationale", "證據與原因")}</h3>
+          ${renderList(finding.evidence, language)}
+          <p><strong>${text(language, "Rationale", "原因")}：</strong> ${escapeHtml(translated.rationale)}</p>
+        </section>
+        <section class="finding-panel">
+          <h3>${text(language, "Recommendation and scope", "建議與範圍")}</h3>
+          <p>${escapeHtml(translated.recommendation)}</p>
+          <dl class="finding-facts">
+            <dt>${text(language, "Evidence kind", "證據類型")}</dt><dd>${escapeHtml(valueText(language, finding.evidence_kind))}</dd>
+            <dt>${text(language, "Claim scope", "主張範圍")}</dt><dd>${display(finding.claim_scope) === "" ? text(language, "None", "無") : escapeHtml(finding.claim_scope)}</dd>
+          </dl>
+          ${sourceLink(finding.source_url, language)}
+        </section>
+      </div>
+    </div>
+  </details>`;
 }
 
 function sourceLink(value: unknown, language: HtmlLanguage): string {

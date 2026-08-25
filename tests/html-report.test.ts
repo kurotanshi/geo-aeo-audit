@@ -107,6 +107,23 @@ describe("renderHtmlReport", () => {
     expect(html).toContain("無需變更。");
   });
 
+  it("renders findings as keyboard-accessible disclosure cards", () => {
+    const elements = findElements(parse(renderHtmlReport(maliciousResult())));
+    const findings = elements.filter(
+      (element) =>
+        element.tagName === "details" &&
+        element.attrs.some(
+          (attribute) => attribute.name === "class" && attribute.value.split(" ").includes("finding"),
+        ),
+    );
+
+    expect(findings).toHaveLength(2);
+    expect(findings[0]?.attrs.some((attribute) => attribute.name === "open")).toBe(true);
+    expect(findings[1]?.attrs.some((attribute) => attribute.name === "open")).toBe(false);
+    expect(elements.filter((element) => element.tagName === "summary")).toHaveLength(3);
+    expect(elements.some((element) => element.tagName === "main")).toBe(true);
+  });
+
   it("escapes untrusted text and emits only safe HTTP(S) links", () => {
     const html = renderHtmlReport(maliciousResult());
     const elements = findElements(parse(html));
@@ -118,10 +135,10 @@ describe("renderHtmlReport", () => {
     ).toBe(true);
 
     const links = elements.filter((element) => element.tagName === "a");
-    expect(links).toHaveLength(1);
+    expect(links).toHaveLength(2);
     for (const link of links) {
       const href = link.attrs.find((attribute) => attribute.name === "href")?.value;
-      expect(href).toMatch(/^https?:\/\//);
+      expect(href === "#report-content" || /^https?:\/\//.test(href ?? "")).toBe(true);
     }
     expect(html).not.toContain('href="javascript:');
   });

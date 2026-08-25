@@ -32,7 +32,14 @@ pnpm add -g geo-aeo-audit
 geo-aeo audit https://example.com/
 ```
 
-從原始碼開發（pnpm 11）：
+若只想在特定專案使用，安裝成開發相依套件：
+
+```bash
+pnpm add --save-dev geo-aeo-audit
+pnpm exec geo-aeo audit https://example.com/
+```
+
+一般使用者不需要 clone 本專案。以下原始碼安裝方式僅供貢獻者與維護者使用（pnpm 11）：
 
 ```bash
 pnpm install
@@ -155,7 +162,14 @@ pnpm add -g geo-aeo-audit
 geo-aeo audit https://example.com/
 ```
 
-Developing from source (pnpm 11):
+To use it only within a specific project, install it as a development dependency:
+
+```bash
+pnpm add --save-dev geo-aeo-audit
+pnpm exec geo-aeo audit https://example.com/
+```
+
+Regular users do not need to clone this repository. The source installation below is only for contributors and maintainers (pnpm 11):
 
 ```bash
 pnpm install
