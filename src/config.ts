@@ -2,6 +2,8 @@ import { ConfigError } from "./errors.js";
 
 export type FailOn = "never" | "blocker" | "error";
 const FAIL_ON_VALUES: readonly FailOn[] = ["never", "blocker", "error"];
+export type HtmlLanguage = "en" | "zh-TW";
+const HTML_LANGUAGES: readonly HtmlLanguage[] = ["en", "zh-TW"];
 
 /**
  * First-class resource limits. All are written into report metadata by later
@@ -40,6 +42,7 @@ export interface AuditConfig {
   output: {
     json: boolean;
     htmlPath?: string;
+    htmlLanguage?: HtmlLanguage;
   };
   limits: AuditLimits;
 }
@@ -50,6 +53,7 @@ export interface ParsedFlags {
   json?: boolean;
   "no-json"?: boolean;
   html?: string;
+  "html-lang"?: string;
 }
 
 /**
@@ -76,7 +80,11 @@ export function parseAuditConfig(input: { values: ParsedFlags; positionals: stri
     url,
     mode: values.site ? "site" : "page",
     failOn,
-    output: { json, ...(values.html !== undefined ? { htmlPath: values.html } : {}) },
+    output: {
+      json,
+      ...(values.html !== undefined ? { htmlPath: values.html } : {}),
+      ...(values["html-lang"] !== undefined ? { htmlLanguage: resolveHtmlLanguage(values["html-lang"]) } : {}),
+    },
     limits: DEFAULT_LIMITS,
   };
 }
@@ -100,4 +108,9 @@ function resolveFailOn(value: string | undefined): FailOn {
     return value as FailOn;
   }
   throw new ConfigError(`--fail-on must be one of ${FAIL_ON_VALUES.join(", ")}, got: ${value}`);
+}
+
+function resolveHtmlLanguage(value: string): HtmlLanguage {
+  if ((HTML_LANGUAGES as readonly string[]).includes(value)) return value as HtmlLanguage;
+  throw new ConfigError(`--html-lang must be one of ${HTML_LANGUAGES.join(", ")}, got: ${value}`);
 }

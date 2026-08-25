@@ -35,6 +35,7 @@ Options:
   --json             Print JSON result to stdout (default on)
   --no-json          Suppress JSON output
   --html <path>      Write single-file HTML report to <path>
+  --html-lang <lang> HTML report language: en | zh-TW (default: en)
   -h, --help         Show this help
 `;
 
@@ -73,6 +74,7 @@ const AUDIT_OPTIONS = {
   json: { type: "boolean" },
   "no-json": { type: "boolean" },
   html: { type: "string" },
+  "html-lang": { type: "string" },
 } as const;
 
 const PROBE_OPTIONS = {
@@ -147,7 +149,7 @@ async function runAuditCommand(args: string[]): Promise<ExitCodeValue> {
   if (config.output.json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   if (config.output.htmlPath) {
     try {
-      await writeFile(config.output.htmlPath, renderHtmlReport(result), "utf8");
+      await writeFile(config.output.htmlPath, renderHtmlReport(result, config.output.htmlLanguage), "utf8");
     } catch (error) {
       process.stderr.write(`Error: could not write HTML report: ${message(error)}\n`);
       return ExitCode.INCOMPLETE;

@@ -10,18 +10,20 @@ describe("parseAuditConfig", () => {
     expect(cfg.failOn).toBe("blocker");
     expect(cfg.output.json).toBe(true);
     expect(cfg.output.htmlPath).toBeUndefined();
+    expect(cfg.output.htmlLanguage).toBeUndefined();
     expect(cfg.limits).toEqual(DEFAULT_LIMITS);
   });
 
   it("honours --site, --fail-on, --no-json and --html", () => {
     const cfg = parseAuditConfig({
-      values: { site: true, "fail-on": "error", "no-json": true, html: "out.html" },
+      values: { site: true, "fail-on": "error", "no-json": true, html: "out.html", "html-lang": "zh-TW" },
       positionals: ["http://example.com"],
     });
     expect(cfg.mode).toBe("site");
     expect(cfg.failOn).toBe("error");
     expect(cfg.output.json).toBe(false);
     expect(cfg.output.htmlPath).toBe("out.html");
+    expect(cfg.output.htmlLanguage).toBe("zh-TW");
   });
 
   it("rejects a missing url", () => {
@@ -42,6 +44,12 @@ describe("parseAuditConfig", () => {
   it("rejects an invalid --fail-on value", () => {
     expect(() =>
       parseAuditConfig({ values: { "fail-on": "always" }, positionals: ["https://example.com"] }),
+    ).toThrow(ConfigError);
+  });
+
+  it("rejects an invalid --html-lang value", () => {
+    expect(() =>
+      parseAuditConfig({ values: { "html-lang": "zh-CN" }, positionals: ["https://example.com"] }),
     ).toThrow(ConfigError);
   });
 });

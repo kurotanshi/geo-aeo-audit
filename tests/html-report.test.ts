@@ -27,7 +27,7 @@ function maliciousResult(): AuditResult {
       subject_url: `https://example.com/?q=${PAYLOAD}`,
     },
     {
-      id: "content.valid-source",
+      id: "content.source_links",
       result: "pass",
       severity: "info",
       category: "source_and_evidence",
@@ -95,6 +95,16 @@ describe("renderHtmlReport", () => {
     expect(html).toContain("Findings (2)");
     expect(html).toContain("not a citation-probability estimate");
     expect(html).not.toMatch(/<script\b/i);
+  });
+
+  it("renders the report UI and finding guidance in Traditional Chinese", () => {
+    const html = renderHtmlReport(maliciousResult(), "zh-TW");
+    expect(html).toContain('<html lang="zh-Hant">');
+    expect(html).toContain("分類計分卡");
+    expect(html).toContain("傳輸與協定錯誤");
+    expect(html).toContain("檢查結果 (2)");
+    expect(html).toContain("文章提供至少一個可從外部解析的來源連結。");
+    expect(html).toContain("無需變更。");
   });
 
   it("escapes untrusted text and emits only safe HTTP(S) links", () => {

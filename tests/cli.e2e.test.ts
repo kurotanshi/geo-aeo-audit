@@ -127,14 +127,18 @@ describe("geo-aeo CLI", () => {
         "--no-json",
         "--html",
         reportPath,
+        "--html-lang",
+        "zh-TW",
       ]);
       expect(code).toBe(0);
       expect(stdout).toBe("");
       expect(stderr).toBe("");
       const html = await readFile(reportPath, "utf8");
       expect(html).toMatch(/^<!doctype html>/);
-      expect(html).toContain("GEO/AEO static readiness audit");
-      expect(html).toContain("Transport and protocol errors");
+      expect(html).toContain('<html lang="zh-Hant">');
+      expect(html).toContain("GEO/AEO 靜態準備度稽核");
+      expect(html).toContain("傳輸與協定錯誤");
+      expect(html).toContain("稽核傳輸層無法取得回應，因此無法量測技術資格。");
       expect(html).not.toMatch(/<script\b/i);
     } finally {
       await rm(directory, { recursive: true, force: true });

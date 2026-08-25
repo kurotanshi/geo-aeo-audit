@@ -4,12 +4,13 @@ import type {
   CategoryScorecard,
   Finding,
 } from "../schema/result.js";
+import type { HtmlLanguage } from "../config.js";
 
 const CSP =
   "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'";
 
 /** Render a self-contained static report. Every dynamic value is HTML-escaped. */
-export function renderHtmlReport(result: AuditResult): string {
+export function renderHtmlReport(result: AuditResult, language: HtmlLanguage = "en"): string {
   const transportErrors = result.blockers.filter(
     (blocker) => blocker.kind === "transport_or_protocol",
   );
@@ -19,12 +20,12 @@ export function renderHtmlReport(result: AuditResult): string {
   const notTested = result.findings.filter((finding) => finding.result === "not_tested");
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${language === "zh-TW" ? "zh-Hant" : "en"}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="${CSP}">
-  <title>GEO/AEO audit — ${escapeHtml(result.target.normalized_url)}</title>
+  <title>${text(language, "GEO/AEO audit", "GEO/AEO 稽核報告")} — ${escapeHtml(result.target.normalized_url)}</title>
   <style>
     :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; }
     body { margin: 0 auto; max-width: 1120px; padding: 2rem; line-height: 1.5; }
@@ -48,105 +49,109 @@ export function renderHtmlReport(result: AuditResult): string {
 </head>
 <body>
   <header>
-    <h1>GEO/AEO static readiness audit</h1>
+    <h1>${text(language, "GEO/AEO static readiness audit", "GEO/AEO 靜態準備度稽核")}</h1>
     <p><code>${escapeHtml(result.target.normalized_url)}</code></p>
-    <p class="muted">Category scores summarize measured static rules. They are not a citation-probability estimate and are not combined into a total score.</p>
+    <p class="muted">${text(
+      language,
+      "Category scores summarize measured static rules. They are not a citation-probability estimate and are not combined into a total score.",
+      "分類分數彙整已量測的靜態規則；它們不是引用機率的估計，也不會合併成單一總分。",
+    )}</p>
   </header>
-  ${renderVersions(result)}
-  ${renderScorecards(result.scorecards)}
-  ${renderBlockers(result.blockers)}
-  ${renderTransportErrors(transportErrors)}
-  ${renderLimitations(measurementLimitations)}
-  ${renderNotTested(notTested)}
-  ${renderFindings(result.findings)}
+  ${renderVersions(result, language)}
+  ${renderScorecards(result.scorecards, language)}
+  ${renderBlockers(result.blockers, language)}
+  ${renderTransportErrors(transportErrors, language)}
+  ${renderLimitations(measurementLimitations, language)}
+  ${renderNotTested(notTested, language)}
+  ${renderFindings(result.findings, language)}
 </body>
 </html>
 `;
 }
 
-function renderVersions(result: AuditResult): string {
+function renderVersions(result: AuditResult, language: HtmlLanguage): string {
   const metadata = result.metadata;
   const psl = metadata.public_suffix_list;
   return `<section>
-    <h2>Report metadata</h2>
+    <h2>${text(language, "Report metadata", "報告中繼資料")}</h2>
     <table>
       <tbody>
-        ${row("Generated", result.generated_at)}
-        ${row("Mode", result.target.mode)}
-        ${row("Requested URL", result.target.requested_url)}
-        ${row("Normalized URL", result.target.normalized_url)}
-        ${row("Schema version", result.schema_version)}
-        ${row("Tool version", result.tool_version)}
-        ${row("Ruleset version", result.ruleset_version)}
-        ${row("URL normalization", metadata.url_normalization.version)}
+        ${row(text(language, "Generated", "產生時間"), result.generated_at)}
+        ${row(text(language, "Mode", "模式"), valueText(language, result.target.mode))}
+        ${row(text(language, "Requested URL", "要求的 URL"), result.target.requested_url)}
+        ${row(text(language, "Normalized URL", "正規化 URL"), result.target.normalized_url)}
+        ${row(text(language, "Schema version", "Schema 版本"), result.schema_version)}
+        ${row(text(language, "Tool version", "工具版本"), result.tool_version)}
+        ${row(text(language, "Ruleset version", "規則集版本"), result.ruleset_version)}
+        ${row(text(language, "URL normalization", "URL 正規化"), metadata.url_normalization.version)}
         ${row(
-          "Sampling",
+          text(language, "Sampling", "抽樣"),
           metadata.sampling.applied
-            ? `${metadata.sampling.method} / ${metadata.sampling.hash_algorithm} / seed ${metadata.sampling.seed}`
-            : "not applied (single-page mode)",
+            ? `${metadata.sampling.method} / ${metadata.sampling.hash_algorithm} / ${text(language, "seed", "種子")} ${metadata.sampling.seed}`
+            : text(language, "not applied (single-page mode)", "未套用（單頁模式）"),
         )}
         ${row(
-          "Public Suffix List",
+          text(language, "Public Suffix List", "Public Suffix List"),
           psl.used
             ? `${display(psl.package_name)} ${display(psl.package_version)} / data ${display(psl.data_version)}`
-            : `not used; scope basis: ${psl.scope_basis}`,
+            : text(language, `not used; scope basis: ${psl.scope_basis}`, `未使用；範圍基準：${psl.scope_basis}`),
         )}
       </tbody>
     </table>
-    ${renderSamples(metadata.sampling.selected)}
+    ${renderSamples(metadata.sampling.selected, language)}
     <details>
-      <summary>Resource limits</summary>
+      <summary>${text(language, "Resource limits", "資源限制")}</summary>
       <pre>${escapeHtml(JSON.stringify(metadata.limits, null, 2))}</pre>
     </details>
   </section>`;
 }
 
-function renderSamples(samples: AuditResult["metadata"]["sampling"]["selected"]): string {
+function renderSamples(samples: AuditResult["metadata"]["sampling"]["selected"], language: HtmlLanguage): string {
   if (samples.length === 0) return "";
-  return `<h3>Deterministic sample</h3>
+  return `<h3>${text(language, "Deterministic sample", "確定性樣本")}</h3>
     <table>
-      <thead><tr><th>URL</th><th>SHA-256 hash</th><th>State</th></tr></thead>
+      <thead><tr><th>URL</th><th>SHA-256 hash</th><th>${text(language, "State", "狀態")}</th></tr></thead>
       <tbody>${samples
         .map(
           (sample) =>
-            `<tr><td><code>${escapeHtml(sample.url)}</code></td><td><code>${escapeHtml(sample.hash)}</code></td><td>${escapeHtml(sample.state)}</td></tr>`,
+            `<tr><td><code>${escapeHtml(sample.url)}</code></td><td><code>${escapeHtml(sample.hash)}</code></td><td>${escapeHtml(valueText(language, sample.state))}</td></tr>`,
         )
         .join("")}</tbody>
     </table>`;
 }
 
-function renderScorecards(scorecards: readonly CategoryScorecard[]): string {
+function renderScorecards(scorecards: readonly CategoryScorecard[], language: HtmlLanguage): string {
   return `<section>
-    <h2>Category scorecards</h2>
+    <h2>${text(language, "Category scorecards", "分類計分卡")}</h2>
     <div class="cards">${scorecards
       .map(
         (card) => `<article class="card">
-          <h3>${escapeHtml(card.category)}</h3>
-          <div class="metric">${percentage(card.score.value)}</div>
-          <p>${card.score.passed} passed / ${card.score.failed} failed / ${card.score.denominator} scored</p>
-          <p>Measurement coverage: <strong>${percentage(card.measurement_coverage.value)}</strong></p>
-          <p>${card.measurement_coverage.measured} measured / ${card.measurement_coverage.applicable} applicable; ${card.measurement_coverage.not_tested} NOT_TESTED; ${card.measurement_coverage.errors} errors</p>
-          <p class="muted">Excluded: ${card.excluded_from_score.informational} informational, ${card.excluded_from_score.experimental} experimental, ${card.excluded_from_score.unclassified} unclassified, ${card.excluded_from_score.unmeasured} unmeasured.</p>
+          <h3>${escapeHtml(valueText(language, card.category))}</h3>
+          <div class="metric">${percentage(card.score.value, language)}</div>
+          <p>${card.score.passed} ${text(language, "passed", "通過")} / ${card.score.failed} ${text(language, "failed", "未通過")} / ${card.score.denominator} ${text(language, "scored", "已計分")}</p>
+          <p>${text(language, "Measurement coverage", "量測涵蓋率")}：<strong>${percentage(card.measurement_coverage.value, language)}</strong></p>
+          <p>${card.measurement_coverage.measured} ${text(language, "measured", "已量測")} / ${card.measurement_coverage.applicable} ${text(language, "applicable", "適用")}；${card.measurement_coverage.not_tested} ${text(language, "NOT_TESTED", "未測試")}；${card.measurement_coverage.errors} ${text(language, "errors", "錯誤")}</p>
+          <p class="muted">${text(language, "Excluded", "排除於計分之外")}：${card.excluded_from_score.informational} ${text(language, "informational", "資訊性")}、${card.excluded_from_score.experimental} ${text(language, "experimental", "實驗性")}、${card.excluded_from_score.unclassified} ${text(language, "unclassified", "未分類")}、${card.excluded_from_score.unmeasured} ${text(language, "unmeasured", "未量測")}。</p>
         </article>`,
       )
       .join("")}</div>
   </section>`;
 }
 
-function renderBlockers(blockers: readonly Blocker[]): string {
+function renderBlockers(blockers: readonly Blocker[], language: HtmlLanguage): string {
   return `<section>
-    <h2>Blockers (${blockers.length})</h2>
+    <h2>${text(language, "Blockers", "阻擋問題")} (${blockers.length})</h2>
     ${
       blockers.length === 0
-        ? empty("No blockers were emitted.")
+        ? empty(text(language, "No blockers were emitted.", "未發現阻擋問題。"))
         : `<table>
-      <thead><tr><th>Kind / rule</th><th>Subject and evidence</th><th>Scope</th></tr></thead>
+      <thead><tr><th>${text(language, "Kind / rule", "類型／規則")}</th><th>${text(language, "Subject and evidence", "對象與證據")}</th><th>${text(language, "Scope", "範圍")}</th></tr></thead>
       <tbody>${blockers
         .map(
           (blocker) => `<tr>
           <td><strong>${escapeHtml(blocker.kind)}</strong><br><code>${escapeHtml(blocker.rule_id)}</code></td>
-          <td>${optionalCode(blocker.subject_url)}${renderList(blocker.evidence)}</td>
-          <td><strong>Applies to</strong>${renderList(blocker.applies_to)}<strong>Not asserted for</strong>${renderList(blocker.not_asserted_for)}</td>
+          <td>${optionalCode(blocker.subject_url)}${renderList(blocker.evidence, language)}</td>
+          <td><strong>${text(language, "Applies to", "適用於")}</strong>${renderList(blocker.applies_to, language)}<strong>${text(language, "Not asserted for", "未宣稱適用於")}</strong>${renderList(blocker.not_asserted_for, language)}</td>
         </tr>`,
         )
         .join("")}</tbody>
@@ -155,17 +160,17 @@ function renderBlockers(blockers: readonly Blocker[]): string {
   </section>`;
 }
 
-function renderTransportErrors(blockers: readonly Blocker[]): string {
+function renderTransportErrors(blockers: readonly Blocker[], language: HtmlLanguage): string {
   return `<section>
-    <h2>Transport and protocol errors (${blockers.length})</h2>
+    <h2>${text(language, "Transport and protocol errors", "傳輸與協定錯誤")} (${blockers.length})</h2>
     ${
       blockers.length === 0
-        ? empty("No transport or protocol blocker was emitted.")
+        ? empty(text(language, "No transport or protocol blocker was emitted.", "未發現傳輸或協定阻擋問題。"))
         : blockers
             .map(
               (blocker) => `<article class="card">
         <h3><code>${escapeHtml(blocker.rule_id)}</code></h3>
-        ${optionalCode(blocker.subject_url)}${renderList(blocker.evidence)}
+        ${optionalCode(blocker.subject_url)}${renderList(blocker.evidence, language)}
       </article>`,
             )
             .join("")
@@ -173,64 +178,65 @@ function renderTransportErrors(blockers: readonly Blocker[]): string {
   </section>`;
 }
 
-function renderLimitations(findings: readonly Finding[]): string {
+function renderLimitations(findings: readonly Finding[], language: HtmlLanguage): string {
   return `<section>
-    <h2>Measurement limitations (${findings.length})</h2>
+    <h2>${text(language, "Measurement limitations", "量測限制")} (${findings.length})</h2>
     ${
       findings.length === 0
-        ? empty("No measurement limitation or measurement error was emitted.")
+        ? empty(text(language, "No measurement limitation or measurement error was emitted.", "未發現量測限制或量測錯誤。"))
         : `<ul>${findings
             .map(
               (finding) =>
-                `<li><code>${escapeHtml(finding.id)}</code> — ${escapeHtml(finding.result)}: ${escapeHtml(finding.rationale)}</li>`,
+                `<li><code>${escapeHtml(finding.id)}</code> — ${escapeHtml(valueText(language, finding.result))}：${escapeHtml(findingText(finding, language).rationale)}</li>`,
             )
             .join("")}</ul>`
     }
   </section>`;
 }
 
-function renderNotTested(findings: readonly Finding[]): string {
+function renderNotTested(findings: readonly Finding[], language: HtmlLanguage): string {
   return `<section>
-    <h2>NOT_TESTED items (${findings.length})</h2>
+    <h2>${text(language, "NOT_TESTED items", "未測試項目")} (${findings.length})</h2>
     ${
       findings.length === 0
-        ? empty("Every applicable rule was tested or reported as an error.")
+        ? empty(text(language, "Every applicable rule was tested or reported as an error.", "所有適用規則皆已測試或已回報為錯誤。"))
         : `<ul>${findings
             .map(
               (finding) =>
-                `<li><code>${escapeHtml(finding.id)}</code>${optionalCode(finding.subject_url)} — ${escapeHtml(finding.rationale)}</li>`,
+                `<li><code>${escapeHtml(finding.id)}</code>${optionalCode(finding.subject_url)} — ${escapeHtml(findingText(finding, language).rationale)}</li>`,
             )
             .join("")}</ul>`
     }
   </section>`;
 }
 
-function renderFindings(findings: readonly Finding[]): string {
+function renderFindings(findings: readonly Finding[], language: HtmlLanguage): string {
   return `<section>
-    <h2>Findings (${findings.length})</h2>
+    <h2>${text(language, "Findings", "檢查結果")} (${findings.length})</h2>
     ${
       findings.length === 0
-        ? empty("No findings were emitted.")
+        ? empty(text(language, "No findings were emitted.", "未產生檢查結果。"))
         : `<table>
-      <thead><tr><th>Rule / result</th><th>Evidence and rationale</th><th>Recommendation and scope</th></tr></thead>
-      <tbody>${findings.map(renderFinding).join("")}</tbody>
+      <thead><tr><th>${text(language, "Rule / result", "規則／結果")}</th><th>${text(language, "Evidence and rationale", "證據與原因")}</th><th>${text(language, "Recommendation and scope", "建議與範圍")}</th></tr></thead>
+      <tbody>${findings.map((finding) => renderFinding(finding, language)).join("")}</tbody>
     </table>`
     }
   </section>`;
 }
 
-function renderFinding(finding: Finding): string {
+function renderFinding(finding: Finding, language: HtmlLanguage): string {
+  const translated = findingText(finding, language);
   return `<tr>
-    <td><code>${escapeHtml(finding.id)}</code><br><strong class="${resultClass(finding.result)}">${escapeHtml(finding.result)}</strong><br>${escapeHtml(finding.category)} / ${escapeHtml(finding.score_impact)}${optionalCode(finding.subject_url)}</td>
-    <td>${renderList(finding.evidence)}<p>${escapeHtml(finding.rationale)}</p></td>
-    <td><p>${escapeHtml(finding.recommendation)}</p><p>Evidence kind: ${escapeHtml(finding.evidence_kind)}</p><p>Claim scope: ${escapeHtml(finding.claim_scope)}</p>${sourceLink(finding.source_url)}</td>
+    <td><code>${escapeHtml(finding.id)}</code><br><strong class="${resultClass(finding.result)}">${escapeHtml(valueText(language, finding.result))}</strong><br>${escapeHtml(valueText(language, finding.category))} / ${escapeHtml(valueText(language, finding.score_impact))}${optionalCode(finding.subject_url)}</td>
+    <td>${renderList(finding.evidence, language)}<p>${escapeHtml(translated.rationale)}</p></td>
+    <td><p>${escapeHtml(translated.recommendation)}</p><p>${text(language, "Evidence kind", "證據類型")}：${escapeHtml(valueText(language, finding.evidence_kind))}</p><p>${text(language, "Claim scope", "主張範圍")}：${escapeHtml(finding.claim_scope)}</p>${sourceLink(finding.source_url, language)}</td>
   </tr>`;
 }
 
-function sourceLink(value: unknown): string {
+function sourceLink(value: unknown, language: HtmlLanguage): string {
   const href = safeHttpUrl(value);
   if (href === null) return "";
-  return `<p><a href="${escapeHtml(href)}" rel="noreferrer noopener">Official or standards source</a></p>`;
+  return `<p><a href="${escapeHtml(href)}" rel="noreferrer noopener">${text(language, "Official or standards source", "官方或標準來源")}</a></p>`;
 }
 
 export function safeHttpUrl(value: unknown): string | null {
@@ -249,9 +255,9 @@ function row(label: string, value: unknown): string {
   return `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`;
 }
 
-function renderList(value: unknown): string {
+function renderList(value: unknown, language: HtmlLanguage): string {
   const items = Array.isArray(value) ? value : value === undefined ? [] : [value];
-  if (items.length === 0) return '<p class="muted">None</p>';
+  if (items.length === 0) return `<p class="muted">${text(language, "None", "無")}</p>`;
   return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
 
@@ -263,8 +269,304 @@ function resultClass(result: Finding["result"]): string {
   return `result-${result.replaceAll("_", "-")}`;
 }
 
-function percentage(value: number | null): string {
-  return value === null ? "Not scored" : `${value}%`;
+function percentage(value: number | null, language: HtmlLanguage): string {
+  return value === null ? text(language, "Not scored", "未計分") : `${value}%`;
+}
+
+function text(language: HtmlLanguage, english: string, traditionalChinese: string): string {
+  return language === "zh-TW" ? traditionalChinese : english;
+}
+
+const ZH_TW_VALUES: Record<string, string> = {
+  page: "單頁",
+  site: "全站",
+  fetched: "已抓取",
+  skipped_by_robots: "依 robots.txt 略過",
+  skipped_due_to_robots_unavailable: "因 robots.txt 無法取得而略過",
+  fetch_error: "抓取錯誤",
+  pass: "通過",
+  fail: "未通過",
+  not_applicable: "不適用",
+  not_tested: "未測試",
+  error: "錯誤",
+  access_and_eligibility: "存取與資格",
+  discoverability: "可探索性",
+  parseability: "可解析性",
+  freshness_and_entity: "時效性與實體",
+  source_and_evidence: "來源與證據",
+  scored: "計分",
+  informational: "資訊性",
+  experimental: "實驗性",
+  official_behavior: "官方行為",
+  official_recommendation: "官方建議",
+  standard: "標準",
+  empirical_observation: "實證觀察",
+  heuristic: "啟發式",
+  transport_or_protocol: "傳輸或協定",
+  provider_eligibility: "服務供應商資格",
+};
+
+function valueText(language: HtmlLanguage, value: unknown): string {
+  const raw = display(value);
+  return language === "zh-TW" ? ZH_TW_VALUES[raw] ?? raw : raw;
+}
+
+type FindingMessages = {
+  rationale: Partial<Record<Finding["result"], string>>;
+  recommendation: Partial<Record<Finding["result"], string>>;
+};
+
+const ZH_TW_FINDINGS: Record<string, FindingMessages> = {
+  "technical.transport": messages(
+    { error: "稽核傳輸層無法取得回應，因此無法量測技術資格。" },
+    { error: "請排除 DNS、TLS、重新導向、HTTP 或網路問題後重新執行稽核。" },
+  ),
+  "technical.http_status": messages(
+    {
+      pass: "最終回應使用成功的 HTTP 狀態碼。",
+      fail: "最終回應不是成功的 HTTP 狀態碼。",
+      not_tested: "因量測限制而未取得頁面，無法檢查 HTTP 狀態。",
+    },
+    {
+      fail: "請讓受稽核 URL 的最終回應使用成功的 HTTP 狀態碼。",
+      not_tested: "請排除量測限制，待頁面可抓取後重新執行稽核。",
+    },
+  ),
+  "technical.indexability": messages(
+    {
+      pass: "初始回應標頭與 HTML 中未發現 noindex 指示。",
+      fail: "noindex 指示會阻止頁面進入 Google Search 官方文件所述的搜尋範圍。",
+      not_tested: "初始頁面內容未接受檢查，因此無法判定索引資格。",
+    },
+    {
+      fail: "僅在此頁面應可被索引時移除 noindex。",
+      not_tested: "請檢查 robots 存取設定，適合時重新執行內容稽核。",
+    },
+  ),
+  "technical.canonical": messages(
+    {
+      pass: "初始 HTML 包含一個語法有效的 canonical URL。",
+      fail: "canonical 宣告缺漏、多重或不是有效的 HTTP(S) URL，無法明確指出偏好網址。",
+      not_tested: "初始頁面內容未接受檢查，因此無法判定 canonical URL。",
+    },
+    {
+      fail: "請在初始 HTML 中提供且僅提供一個有效的 canonical 連結。",
+      not_tested: "請檢查 robots 存取設定，適合時重新執行內容稽核。",
+    },
+  ),
+  "technical.sitemap_membership": messages(
+    {
+      pass: "已在成功解析的 sitemap 中明確找到受稽核頁面。",
+      fail: "這次有界稽核觀察到的 sitemap URL 中沒有受稽核頁面。",
+      not_tested: "沒有可用且成功解析的 sitemap URL 集合，因此無法量測 sitemap 收錄狀態。",
+    },
+    { fail: "若此 canonical 頁面應被探索，請將它加入適當的 sitemap。" },
+  ),
+  "technical.initial_html_content": messages(
+    {
+      pass: "初始 HTML 含有可直接觀察的文字，因此可以進行靜態內容檢查。",
+      not_tested: "需要瀏覽器渲染或解除量測限制後才能確認主要內容；這不代表任何 AI 都無法使用該內容。",
+    },
+    { not_tested: "可行時請在初始 HTML 中輸出有意義的主要內容，或另以瀏覽器型稽核確認。" },
+  ),
+  "technical.redirect_hygiene": messages(
+    {
+      pass: "未發現 meta refresh 或低內容量的純 JavaScript 重新導向殼層。",
+      fail: "初始 HTML 依賴不執行渲染的代理可能不會跟隨的客戶端重新導向。",
+      not_tested: "初始頁面內容未接受檢查，因此無法判定重新導向方式。",
+    },
+    {
+      fail: "請使用適當的 HTTP 重新導向，並直接向不執行渲染的客戶端提供目的 URL。",
+      not_tested: "請檢查 robots 存取設定，適合時重新執行內容稽核。",
+    },
+  ),
+  "technical.llms_txt": messages(
+    {
+      pass: "網站提供內容充實且非 HTML 的 llms.txt 文件。",
+      fail: "兩個標準 llms.txt 位置都沒有回傳內容充實且非 HTML 的文件。",
+      error: "至少一個 llms.txt 位置量測失敗，且沒有任何位置通過。",
+      not_tested: "無法量測此 origin 的 llms.txt。",
+    },
+    {
+      pass: "請持續更新文件，並讓內容與公開網站一致。",
+      fail: "請在 /llms.txt 或 /.well-known/llms.txt 發布至少 100 個字元的純文字或 Markdown。",
+      error: "請確保 llms.txt 位置可穩定抓取後重新執行稽核。",
+      not_tested: "請允許稽核爬蟲抓取 llms.txt 後重新執行稽核。",
+    },
+  ),
+  "technical.not_found_status": messages(
+    {
+      pass: "合成的不存在路徑明確回傳找不到資源的狀態碼。",
+      fail: "合成的不存在路徑沒有回傳 404 或 410。",
+      error: "合成的不存在路徑無法量測，或回傳伺服器錯誤。",
+      not_tested: "無法量測此 origin 對不存在路徑的回應。",
+    },
+    {
+      fail: "請讓不存在的資源回傳 HTTP 404 或 410，而不是 soft 404 頁面。",
+      error: "請讓不存在路徑穩定回傳 404 或 410 後重新執行稽核。",
+      not_tested: "請允許稽核爬蟲抓取合成的不存在路徑後重新執行稽核。",
+    },
+  ),
+  "technical.markdown_negotiation": messages(
+    {
+      pass: "頁面可提供 Markdown，且快取會依 Accept 標頭變化。",
+      fail: "頁面沒有為指定的 Accept 標頭回傳完整有效的 Markdown 協商回應。",
+      error: "Markdown 內容協商請求在量測時失敗。",
+      not_tested: "主要頁面無法用於 Markdown 內容協商。",
+    },
+    {
+      fail: "請在 Accept: text/markdown 時提供 text/markdown，並加入 Vary: Accept。",
+      error: "請確保協商後的內容可穩定抓取，再重新執行稽核。",
+      not_tested: "請讓主要頁面可抓取後重新執行稽核。",
+    },
+  ),
+  "technical.trust_pages": messages(
+    {
+      pass: "主要頁面連結到內容充實且同 origin 的關於、聯絡與隱私權頁面。",
+      fail: "一個以上的信任頁面連結缺漏、回應不成功或可見文字不足。",
+      error: "至少一個信任頁面在量測時失敗。",
+      not_tested: "至少一個信任頁面無法量測。",
+    },
+    {
+      fail: "請從主要頁面連結同 origin 的關於、聯絡與隱私權頁面，並讓每頁至少有 500 個可見字元。",
+      error: "請確保信任頁面可穩定抓取後重新執行稽核。",
+      not_tested: "請讓主要頁面及其信任頁面連結可供稽核爬蟲抓取。",
+    },
+  ),
+  "content.title": contentMessages(
+    "頁面提供一個可供使用者辨識內容的描述性標題。",
+    "頁面缺少唯一且非空白的 title 元素，或有多個 title 造成偏好標題不明。",
+    "請提供且僅提供一個簡潔、具描述性的 title 元素。",
+  ),
+  "content.meta_description": contentMessages(
+    "頁面提供一個 Google 可在更適合時採用的摘要。",
+    "頁面沒有提供單一且明確的 meta description。",
+    "請提供一個針對此頁且有用的 meta description。",
+  ),
+  "content.language": contentMessages(
+    "文件宣告了語法合理的語言標籤。",
+    "文件語言缺漏或格式不正確。",
+    "請使用有效的語言標籤，將 html lang 設為內容的主要語言。",
+  ),
+  "content.open_graph": contentMessages(
+    "頁面提供此規則量測的 Open Graph 類型與圖片資訊。",
+    "頁面缺少一個以上的 Open Graph 欄位。",
+    "請提供非空白的 og:type 與 og:image metadata。",
+  ),
+  "content.document_landmarks": contentMessages(
+    "靜態文件同時提供主要內容與導覽 landmark。",
+    "靜態文件缺少一個以上的必要 landmark。",
+    "請在靜態 HTML 中使用 main 與 navigation landmark。",
+  ),
+  "content.heading_structure": contentMessages(
+    "靜態 HTML 提供主要標題，且沒有跳過標題層級。",
+    "靜態標題大綱缺少主要 h1，或跳過了標題層級。",
+    "請提供清楚的 h1，並使用連貫的標題層級。",
+  ),
+  "content.jsonld_validity": messages(
+    {
+      pass: "觀察到的 JSON-LD 是語法有效的 JSON。",
+      error: "至少一個 JSON-LD 區塊無法解析；這是量測錯誤，不是內容主張未通過。",
+      not_applicable: "頁面沒有提供 JSON-LD，因此不適用 JSON-LD 語法檢查。",
+      not_tested: "此規則無法取得靜態頁面內容。",
+    },
+    { error: "請修正無效的 JSON-LD 語法後重新執行稽核。", not_tested: "請排除量測限制後重新執行稽核。" },
+  ),
+  "content.article_structured_data": articleMessages(
+    "頁面提供 Article 系列的 JSON-LD 實體。",
+    "類似文章的頁面沒有提供 Article 系列的 JSON-LD 實體。",
+    "請在頁面屬於文章時加入正確的 Article JSON-LD。",
+    "無效的 JSON-LD 使 Article 實體無法可靠判定。",
+  ),
+  "content.author": articleMessages(
+    "文章在靜態 HTML 或 JSON-LD 中提供至少一個作者訊號。",
+    "文章沒有可觀察的作者訊號。",
+    "請標明文章作者，並讓可見與結構化的作者資料保持一致。",
+  ),
+  "content.publication_date": articleMessages(
+    "文章提供語法有效的發布日期。",
+    "文章缺少有效的 ISO 8601 發布日期訊號。",
+    "請提供正確的可見日期與 datePublished 結構化值。",
+  ),
+  "content.entity_identity": articleMessages(
+    "JSON-LD 識別出具名的 Person 或 Organization 實體。",
+    "適用的文章或個人資料頁面未在 JSON-LD 中提供具名的 Person 或 Organization 實體。",
+    "請為適用的作者與發布者使用正確的 Person 或 Organization 實體。",
+  ),
+  "content.entity_same_as": articleMessages(
+    "至少一個 Person 或 Organization 實體透過 sameAs 連結到外部身分。",
+    "觀察到的 Person 或 Organization 實體缺少有效的 HTTPS sameAs 連結。",
+    "請為相關的 Person 或 Organization 實體加入正確的 HTTPS sameAs URL。",
+  ),
+  "content.update_signal": articleMessages(
+    "文章提供有效的最後修改訊號。",
+    "未觀察到有效的最後修改訊號；這不代表內容一定過時。",
+    "文章有實質變更時，請提供正確的可見日期與 dateModified 值。",
+  ),
+  "content.source_links": articleMessages(
+    "文章提供至少一個可從外部解析的來源連結。",
+    "未觀察到外部來源連結；這是透明度訊號，不是普遍的排名要求。",
+    "當主張依賴外部證據且連結有助於讀者時，請連結主要來源。",
+  ),
+};
+
+function messages(
+  rationale: FindingMessages["rationale"],
+  recommendation: FindingMessages["recommendation"],
+): FindingMessages {
+  return { rationale, recommendation };
+}
+
+function contentMessages(pass: string, fail: string, recommendation: string): FindingMessages {
+  return messages(
+    { pass, fail, not_tested: "此規則無法取得靜態頁面內容。" },
+    { fail: recommendation, not_tested: "請排除量測限制後重新執行稽核。" },
+  );
+}
+
+function articleMessages(pass: string, fail: string, recommendation: string, error?: string): FindingMessages {
+  return messages(
+    {
+      pass,
+      fail,
+      error,
+      not_applicable: "此頁面的分類不適用這項指引。",
+      not_tested: "此規則無法取得靜態頁面內容。",
+    },
+    {
+      fail: recommendation,
+      error: error === undefined ? undefined : "請修正無效的 JSON-LD 後重新執行稽核。",
+      not_tested: "請排除量測限制後重新執行稽核。",
+    },
+  );
+}
+
+function findingText(finding: Finding, language: HtmlLanguage): { rationale: string; recommendation: string } {
+  if (language === "en") {
+    return { rationale: display(finding.rationale), recommendation: display(finding.recommendation) };
+  }
+  if (finding.id.startsWith("technical.robots.")) {
+    const pass = finding.result === "pass";
+    return {
+      rationale: finding.result === "not_tested"
+        ? "無法量測此爬蟲的 robots.txt 存取政策。"
+        : `官方文件所述的 robots.txt 政策顯示此爬蟲${pass ? "可存取" : "不可存取"}受稽核頁面。`,
+      recommendation: pass
+        ? "無需變更。"
+        : finding.result === "not_tested"
+          ? "請確保 robots.txt 可穩定取得後重新執行稽核。"
+          : "僅在官方文件所述的產品範圍應存取此頁面時，調整對應的 robots.txt 規則。",
+    };
+  }
+  const translation = ZH_TW_FINDINGS[finding.id];
+  return {
+    rationale: translation?.rationale[finding.result] ?? display(finding.rationale),
+    recommendation:
+      translation?.recommendation[finding.result] ??
+      (finding.result === "pass" || finding.result === "not_applicable"
+        ? "無需變更。"
+        : display(finding.recommendation)),
+  };
 }
 
 function empty(message: string): string {

@@ -18,8 +18,18 @@
 
 需要 Node.js 20 以上。
 
+不安裝、直接執行（二選一）：
+
 ```bash
-npx geo-aeo-audit audit https://example.com/
+npx --yes geo-aeo-audit audit https://example.com/
+pnpm dlx geo-aeo-audit audit https://example.com/
+```
+
+也可以使用 pnpm 安裝成全域 CLI：
+
+```bash
+pnpm add -g geo-aeo-audit
+geo-aeo audit https://example.com/
 ```
 
 從原始碼開發（pnpm 11）：
@@ -38,10 +48,11 @@ pnpm run build && node dist/cli.js --help
 
 ```bash
 geo-aeo audit https://example.com/article
-geo-aeo audit https://example.com/ --site --html audit.html > audit.json
+geo-aeo audit https://example.com/ --site --html audit.html --html-lang zh-TW > audit.json
 ```
 
 - `--site` — 在最終 URL 的 origin 內，從 sitemap 取一組有界、確定性的樣本一起稽核；預設只稽核單頁。
+- `--html-lang <en|zh-TW>` — 選擇 HTML 報告語言；預設英文。JSON 與原始技術證據不會翻譯。
 - `--fail-on <blocker|error|never>` — exit code 門檻，預設 `blocker`。
 
 每條規則都會產生一個 finding，結果為：
@@ -130,8 +141,18 @@ Reports describe observable readiness. They do not predict citation probability 
 
 Requires Node.js 20 or newer.
 
+Run without installing (choose one):
+
 ```bash
-npx geo-aeo-audit audit https://example.com/
+npx --yes geo-aeo-audit audit https://example.com/
+pnpm dlx geo-aeo-audit audit https://example.com/
+```
+
+Or install the CLI globally with pnpm:
+
+```bash
+pnpm add -g geo-aeo-audit
+geo-aeo audit https://example.com/
 ```
 
 Developing from source (pnpm 11):
@@ -150,10 +171,11 @@ Each command has its own options; see `geo-aeo <command> --help`. All three acce
 
 ```bash
 geo-aeo audit https://example.com/article
-geo-aeo audit https://example.com/ --site --html audit.html > audit.json
+geo-aeo audit https://example.com/ --site --html audit.html --html-lang zh-TW > audit.json
 ```
 
 - `--site` — audit a bounded, deterministic sitemap sample within the final URL's origin; single-page mode is the default.
+- `--html-lang <en|zh-TW>` — select the HTML report language; English is the default. JSON and raw technical evidence are not translated.
 - `--fail-on <blocker|error|never>` — exit-code threshold, default `blocker`.
 
 Every rule emits one finding:
