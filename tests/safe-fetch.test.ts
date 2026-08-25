@@ -73,6 +73,17 @@ describe("safeFetch happy path (fixture server)", () => {
     expect(res.status).toBe(200);
     expect(calls).toBe(1); // pinned; the OS never re-resolves at connect time
   });
+
+  it("pins through a real getaddrinfo lookup (autoSelectFamily passes all:true)", async () => {
+    // A name hostname (not an IP literal) forces Node to invoke our pinned lookup,
+    // which since Node 20 is called with { all: true }. Fixture origins use a
+    // 127.0.0.1 literal, so this is the only case that exercises that callback shape.
+    const { port } = new URL(fx.origin);
+    const deps: TransportDeps = { isPublic: () => true, resolve: async () => [{ address: "127.0.0.1", family: 4 }] };
+    const res = await safeFetch(`http://localhost:${port}/`, { limits: limits(), deps });
+    expect(res.status).toBe(200);
+    expect(res.resolvedIp).toBe("127.0.0.1");
+  });
 });
 
 describe("safeFetch fail-closed rejections", () => {

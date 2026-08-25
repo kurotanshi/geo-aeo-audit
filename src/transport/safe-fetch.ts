@@ -130,9 +130,14 @@ function hop(target: URL, pin: ResolvedAddress, limits: AuditLimits, userAgent: 
     const port = target.port ? Number(target.port) : isHttps ? 443 : 80;
 
     // Pin the connection to the exact vetted IP; the OS never re-resolves the hostname.
-    const pinnedLookup: LookupFunction = (_hostname, _options, cb) => {
-      // eslint-disable-next-line n/no-callback-literal
-      (cb as (e: null, a: string, f: number) => void)(null, pin.address, pin.family);
+    // Node's autoSelectFamily (default since v20) calls lookup with `all: true` and
+    // expects an array back; honour both callback shapes or it fails "Invalid IP address".
+    const pinnedLookup: LookupFunction = (_hostname, options, cb) => {
+      if (options.all) {
+        cb(null, [{ address: pin.address, family: pin.family }]);
+      } else {
+        cb(null, pin.address, pin.family);
+      }
     };
 
     const options: https.RequestOptions = {
