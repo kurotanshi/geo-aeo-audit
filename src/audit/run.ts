@@ -9,6 +9,11 @@ import {
 import { evaluateRobots, parseRobotsTxt, type ParsedRobots } from "../discovery/robots.js";
 import { normalizeHttpUrl, URL_NORMALIZATION_VERSION } from "../discovery/url.js";
 import { auditPageContent } from "../rules/content.js";
+import {
+  auditOriginProbes,
+  OriginProbeBudgetError,
+  type OriginProbeFetch,
+} from "../rules/origin.js";
 import { auditTechnicalEligibility, type TechnicalAuditResult } from "../rules/technical.js";
 import { buildScorecards } from "../scorecard.js";
 import type { AuditResult, Blocker, Finding } from "../schema/result.js";
@@ -89,12 +94,25 @@ export async function runAudit(config: AuditConfig, deps: RunAuditDeps = {}): Pr
         }
         appendSubject(audit, sampled.url, findings, blockers);
       }
+      const primary = primaryPage(discovery.pages);
+      findings.push(
+        ...(await auditOriginProbes({
+          origin: discovery.origin,
+          robots: { parsed: discovery.robots.parsed, available: robotsAvailable },
+          fetch: createBudgetedFetch(config, deps, discovery.resources.downloadedBytes),
+          ...(primary === undefined
+            ? {}
+            : { primaryPageUrl: primary.url, primaryPageHtml: primary.body.toString("utf8") }),
+        })),
+      );
     } catch (error) {
       appendSubject(transportFailure(config.url, error), config.url, findings, blockers);
+      findings.push(...(await unavailableOriginProbes(config, deps, "initial fetch failed; final origin unavailable")));
     }
   } else {
     const audit = await auditSinglePage(config, deps);
     appendSubject(audit.result, audit.subjectUrl, findings, blockers);
+    findings.push(...audit.originFindings);
   }
 
   return {
@@ -134,27 +152,18 @@ export async function runAudit(config: AuditConfig, deps: RunAuditDeps = {}): Pr
 async function auditSinglePage(
   config: AuditConfig,
   deps: RunAuditDeps,
-): Promise<{ subjectUrl: string; result: TechnicalAuditResult }> {
-  const fetchImpl = deps.fetch ?? safeFetch;
-  let downloadedBytes = 0;
-  const fetchWithinBudget = async (url: string, allowedOrigin?: string): Promise<SafeResponse> => {
-    const remaining = config.limits.maxTotalBytes - downloadedBytes;
-    if (remaining <= 0) throw new TransportError("response_too_large", "total download byte limit reached");
-    const response = await fetchImpl(url, {
-      limits: { ...config.limits, maxResponseBytes: Math.min(config.limits.maxResponseBytes, remaining) },
-      userAgent: USER_AGENT,
-      ...(deps.transportDeps === undefined ? {} : { deps: deps.transportDeps }),
-      ...(allowedOrigin === undefined ? {} : { allowedOrigin }),
-    });
-    downloadedBytes += response.rawBodyBytes;
-    return response;
-  };
+): Promise<{ subjectUrl: string; result: TechnicalAuditResult; originFindings: Finding[] }> {
+  const fetchWithinBudget = createBudgetedFetch(config, deps);
 
   let response: SafeResponse;
   try {
     response = await fetchWithinBudget(normalizeHttpUrl(config.url));
   } catch (error) {
-    return { subjectUrl: config.url, result: transportFailure(config.url, error) };
+    return {
+      subjectUrl: config.url,
+      result: transportFailure(config.url, error),
+      originFindings: await unavailableOriginProbes(config, deps, "initial fetch failed; final origin unavailable"),
+    };
   }
 
   const subjectUrl = normalizeHttpUrl(response.finalUrl);
@@ -177,21 +186,92 @@ async function auditSinglePage(
 
   const ownCrawlerDenied =
     robotsAvailable && robots !== undefined && !evaluateRobots(robots, subjectUrl, CRAWLER_PRODUCT_TOKEN).allowed;
+  const result = withPageContent(
+    auditTechnicalEligibility({
+      targetUrl: subjectUrl,
+      page: responseObservation(response),
+      skipContentDueToRobots: ownCrawlerDenied,
+      robots: { url: robotsUrl, ...(robots === undefined ? {} : { parsed: robots }), available: robotsAvailable },
+      sitemapDiscoveryAttempted: false,
+    }),
+    subjectUrl,
+    response.status >= 200 && response.status < 300 && !ownCrawlerDenied ? response.body : undefined,
+    ownCrawlerDenied ? "skipped_due_to_robots" : `content_not_evaluated_for_http_${response.status}`,
+  );
   return {
     subjectUrl,
-    result: withPageContent(
-      auditTechnicalEligibility({
-        targetUrl: subjectUrl,
-        page: responseObservation(response),
-        skipContentDueToRobots: ownCrawlerDenied,
-        robots: { url: robotsUrl, ...(robots === undefined ? {} : { parsed: robots }), available: robotsAvailable },
-        sitemapDiscoveryAttempted: false,
-      }),
-      subjectUrl,
-      response.status >= 200 && response.status < 300 && !ownCrawlerDenied ? response.body : undefined,
-      ownCrawlerDenied ? "skipped_due_to_robots" : `content_not_evaluated_for_http_${response.status}`,
-    ),
+    result,
+    originFindings: await auditOriginProbes({
+      origin,
+      robots: { ...(robots === undefined ? {} : { parsed: robots }), available: robotsAvailable },
+      fetch: fetchWithinBudget,
+      primaryPageUrl: subjectUrl,
+      ...(response.status >= 200 && response.status < 300 && !ownCrawlerDenied
+        ? { primaryPageHtml: response.body.toString("utf8") }
+        : {}),
+    }),
   };
+}
+
+function createBudgetedFetch(config: AuditConfig, deps: RunAuditDeps, initialDownloadedBytes = 0): OriginProbeFetch {
+  const fetchImpl = deps.fetch ?? safeFetch;
+  let downloadedBytes = initialDownloadedBytes;
+  return async (url: string, allowedOrigin?: string, accept?: string): Promise<SafeResponse> => {
+    const remaining = config.limits.maxTotalBytes - downloadedBytes;
+    if (remaining <= 0) throw new OriginProbeBudgetError();
+    const responseLimit = Math.min(config.limits.maxResponseBytes, remaining);
+    let response: SafeResponse;
+    try {
+      response = await fetchImpl(url, {
+        limits: { ...config.limits, maxResponseBytes: responseLimit },
+        userAgent: USER_AGENT,
+        ...(accept === undefined ? {} : { accept }),
+        ...(deps.transportDeps === undefined ? {} : { deps: deps.transportDeps }),
+        ...(allowedOrigin === undefined ? {} : { allowedOrigin }),
+      });
+    } catch (error) {
+      if (
+        remaining < config.limits.maxResponseBytes &&
+        error instanceof TransportError &&
+        error.reason === "response_too_large"
+      ) {
+        throw new OriginProbeBudgetError();
+      }
+      throw error;
+    }
+    if (response.rawBodyBytes > remaining) throw new OriginProbeBudgetError();
+    downloadedBytes += response.rawBodyBytes;
+    return response;
+  };
+}
+
+function primaryPage(
+  pages: readonly { state: string; response?: SafeResponse }[],
+): { url: string; body: Buffer } | undefined {
+  const page = pages.find(
+    (candidate) =>
+      candidate.state === "fetched" &&
+      candidate.response !== undefined &&
+      candidate.response.status >= 200 &&
+      candidate.response.status < 300,
+  );
+  return page?.response === undefined
+    ? undefined
+    : { url: normalizeHttpUrl(page.response.finalUrl), body: page.response.body };
+}
+
+async function unavailableOriginProbes(
+  config: AuditConfig,
+  deps: RunAuditDeps,
+  reason: string,
+): Promise<Finding[]> {
+  const origin = new URL(normalizeHttpUrl(config.url)).origin;
+  return auditOriginProbes({
+    origin,
+    robots: { available: false },
+    fetch: createBudgetedFetch(config, deps),
+    unavailableReason: reason,
+  });
 }
 
 function responseObservation(response: SafeResponse) {

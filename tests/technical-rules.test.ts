@@ -190,4 +190,40 @@ describe("technical eligibility rules", () => {
       expect(finding(result, "technical.canonical").result).toBe("fail");
     }
   });
+
+  it.each([
+    {
+      name: "normal page",
+      status: 200,
+      body: `<html><body><main>${"Useful content. ".repeat(10)}</main></body></html>`,
+      result: "pass",
+    },
+    {
+      name: "meta refresh",
+      status: 200,
+      body: '<html><head><meta http-equiv="refresh" content="0; url=/next"></head><body>Moving</body></html>',
+      result: "fail",
+    },
+    {
+      name: "JavaScript redirect stub",
+      status: 200,
+      body: '<html><body><div id="app"></div><script>window.location.replace("/next")</script></body></html>',
+      result: "fail",
+    },
+    {
+      name: "content-rich page mentioning location assignment",
+      status: 200,
+      body: `<html><body><main>${"Useful content. ".repeat(10)}</main><script>window.location.href = "/optional"</script></body></html>`,
+      result: "pass",
+    },
+    {
+      name: "non-2xx page",
+      status: 404,
+      body: "not found",
+      result: "not_tested",
+    },
+  ])("classifies redirect hygiene: $name", ({ status, body, result: expected }) => {
+    const result = auditTechnicalEligibility(input({ page: { url: URL, status, headers: {}, body } }));
+    expect(finding(result, "technical.redirect_hygiene")).toMatchObject({ result: expected, score_impact: "scored" });
+  });
 });

@@ -6,6 +6,8 @@ import { runAudit } from "../src/audit/run.js";
 import { DEFAULT_LIMITS, type AuditConfig } from "../src/config.js";
 import { SCHEMA_VERSION } from "../src/version.js";
 import { runProbe } from "../src/probe/run.js";
+import { runOra } from "../src/ora/run.js";
+import { ORA_SCHEMA_VERSION } from "../src/schema/ora.js";
 import { PROBE_SCHEMA_VERSION, type ProbeProvider, type TargetObservation } from "../src/schema/probe.js";
 import type { TransportDeps } from "../src/transport/safe-fetch.js";
 import { startFixture, type Fixture } from "./fixtures/server.js";
@@ -13,6 +15,7 @@ import { startFixture, type Fixture } from "./fixtures/server.js";
 const allowLoopback: TransportDeps = { isPublic: () => true };
 const schemaPath = fileURLToPath(new URL("../schemas/audit-result.schema.json", import.meta.url));
 const probeSchemaPath = fileURLToPath(new URL("../schemas/probe-result.schema.json", import.meta.url));
+const oraSchemaPath = fileURLToPath(new URL("../schemas/ora-result.schema.json", import.meta.url));
 
 function config(url: string, mode: "page" | "site"): AuditConfig {
   return {
@@ -115,6 +118,35 @@ describe("probe result JSON Schema compatibility", () => {
       repeats: 2,
       search: {},
     }, "fixture-key", { provider, observeTarget: async () => target });
+
+    expect(validate(result), JSON.stringify(validate.errors, null, 2)).toBe(true);
+  });
+});
+
+describe("Ora result JSON Schema compatibility", () => {
+  it("keeps the public schema synchronized and validates the independent envelope", async () => {
+    const schema = JSON.parse(await readFile(oraSchemaPath, "utf8")) as Record<string, unknown>;
+    const validate = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true }).compile(schema);
+    const properties = schema.properties as Record<string, { const?: unknown }>;
+    expect(properties.schema_version?.const).toBe(ORA_SCHEMA_VERSION);
+
+    const result = await runOra({
+      url: "https://example.com/path",
+      hostname: "example.com",
+      mode: "cached",
+      output: { json: true },
+    }, {
+      fetch: async () => new Response(JSON.stringify({
+        contractVersion: "1.21.0",
+        score: 72,
+        grade: "B",
+        analysisStatus: "complete",
+        layers: [],
+        topFixes: [],
+        essentials: { checks: { "metadata-completeness": {} } },
+      }), { status: 200, headers: { "content-type": "application/json" } }),
+      generatedAt: () => new Date("2026-08-25T00:00:00.000Z"),
+    });
 
     expect(validate(result), JSON.stringify(validate.errors, null, 2)).toBe(true);
   });

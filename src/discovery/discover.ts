@@ -19,6 +19,7 @@ export type DiscoveryFetch = (
   options: {
     limits: AuditLimits;
     userAgent?: string;
+    accept?: string;
     deps?: TransportDeps;
     allowedOrigin?: string;
   },

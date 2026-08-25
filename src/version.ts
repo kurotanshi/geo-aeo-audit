@@ -10,7 +10,7 @@ export const TOOL_VERSION = pkg.version;
 export const SCHEMA_VERSION = "1.1.0";
 
 /** Version of the audit ruleset (registry + rule semantics). Bump when rules change. */
-export const RULESET_VERSION = "0.2.0";
+export const RULESET_VERSION = "0.3.0";
 
 /** Project URL advertised in the User-Agent. */
 export const PROJECT_URL = "https://github.com/kurohsu/geo-aeo-audit";

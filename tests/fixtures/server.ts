@@ -42,6 +42,10 @@ export async function startFixture(): Promise<Fixture> {
         res.end(body);
         return;
       }
+      case "/accept":
+        res.writeHead(200, { "content-type": "text/plain" });
+        res.end(String(req.headers.accept));
+        return;
       case "/redirect-once":
         res.writeHead(302, { location: "/" });
         res.end();
@@ -92,11 +96,37 @@ export async function startFixture(): Promise<Fixture> {
         res.writeHead(200, { "content-type": "text/html" });
         res.end("<html><body>site entry</body></html>");
         return;
+      case "/readiness":
+        if (req.headers.accept === "text/markdown") {
+          res.writeHead(200, { "content-type": "text/markdown", vary: "Accept" });
+          res.end("# Readiness fixture\n\nA negotiated Markdown representation.");
+          return;
+        }
+        res.writeHead(200, { "content-type": "text/html" });
+        res.end(`<!doctype html><html lang="en"><head>
+          <title>Readiness fixture</title>
+          <meta name="description" content="A complete readiness fixture.">
+          <meta property="og:type" content="website">
+          <meta property="og:image" content="https://example.com/readiness.png">
+          <link rel="canonical" href="/readiness">
+          <script type="application/ld+json">{"@type":"Organization","name":"Fixture","sameAs":"https://example.org/fixture"}</script>
+        </head><body><nav>Navigation</nav><main><h1>Readiness fixture</h1>
+          <a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a>
+        </main></body></html>`);
+        return;
+      case "/about":
+      case "/contact":
+      case "/privacy":
+        res.writeHead(200, { "content-type": "text/html" });
+        res.end(`<html><body><main>${url.pathname.slice(1)} ${"a".repeat(500)}</main></body></html>`);
+        return;
       case "/article":
         res.writeHead(200, { "content-type": "text/html" });
         res.end(`<!doctype html><html lang="en"><head>
           <title>Fixture article</title>
           <meta name="description" content="A complete fixture article for content audit integration.">
+          <meta property="og:type" content="article">
+          <meta property="og:image" content="https://example.com/article.png">
           <script type="application/ld+json">{
             "@context":"https://schema.org",
             "@type":"Article",
@@ -104,11 +134,11 @@ export async function startFixture(): Promise<Fixture> {
             "datePublished":"2026-08-01",
             "dateModified":"2026-08-24",
             "author":{"@type":"Person","name":"Fixture Author"},
-            "publisher":{"@type":"Organization","name":"Fixture Publisher"}
+            "publisher":{"@type":"Organization","name":"Fixture Publisher","sameAs":"https://example.org/publisher"}
           }</script>
-        </head><body><article><h1>Fixture article</h1><h2>Evidence</h2>
+        </head><body><nav>Article navigation</nav><main><article><h1>Fixture article</h1><h2>Evidence</h2>
           <p>Fixture content.</p><a href="https://www.rfc-editor.org/rfc/rfc9110.html">Source</a>
-        </article></body></html>`);
+        </article></main></body></html>`);
         return;
       case "/javascript-only":
         res.writeHead(200, { "content-type": "text/html" });
@@ -132,6 +162,10 @@ export async function startFixture(): Promise<Fixture> {
             "User-agent: OAI-SearchBot\nAllow: /\n" +
             "User-agent: *\nDisallow: /private\nAllow: /private/public\nSitemap: /sitemap-index.xml\n",
         );
+        return;
+      case "/llms.txt":
+        res.writeHead(200, { "content-type": "text/plain" });
+        res.end("Geo AEO audit fixture llms document. ".repeat(4));
         return;
       case "/sitemap.xml":
         res.writeHead(404, { "content-type": "text/plain" });

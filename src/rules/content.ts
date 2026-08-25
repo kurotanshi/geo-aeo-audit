@@ -61,12 +61,15 @@ const CONTENT_RULES: readonly {
   { id: "content.title", category: "parseability", scoreImpact: "scored" },
   { id: "content.meta_description", category: "parseability", scoreImpact: "scored" },
   { id: "content.language", category: "parseability", scoreImpact: "scored" },
+  { id: "content.open_graph", category: "parseability", scoreImpact: "informational" },
+  { id: "content.document_landmarks", category: "parseability", scoreImpact: "scored" },
   { id: "content.heading_structure", category: "parseability", scoreImpact: "experimental" },
   { id: "content.jsonld_validity", category: "parseability", scoreImpact: "scored" },
   { id: "content.article_structured_data", category: "parseability", scoreImpact: "scored" },
   { id: "content.author", category: "freshness_and_entity", scoreImpact: "scored" },
   { id: "content.publication_date", category: "freshness_and_entity", scoreImpact: "scored" },
   { id: "content.entity_identity", category: "freshness_and_entity", scoreImpact: "scored" },
+  { id: "content.entity_same_as", category: "freshness_and_entity", scoreImpact: "scored" },
   { id: "content.update_signal", category: "freshness_and_entity", scoreImpact: "scored" },
   { id: "content.source_links", category: "source_and_evidence", scoreImpact: "experimental" },
 ];
@@ -90,15 +93,67 @@ export function auditPageContent(input: ContentAuditInput): ContentAuditResult {
   auditTitle(document, findings);
   auditDescription(document, findings);
   auditLanguage(document, findings);
+  auditOpenGraph(document, findings);
+  auditDocumentLandmarks(document, findings);
   auditHeadings(document, findings);
   auditJsonLd(jsonLd, findings);
   auditArticleStructuredData(articleLike, articleEntity, jsonLd, findings);
   auditAuthor(document, articleLike, articleEntity, findings);
   auditPublicationDate(document, articleLike, articleEntity, findings);
   auditEntityIdentity(articleLike, jsonLd.entities, findings);
+  auditEntitySameAs(jsonLd.entities, findings);
   auditUpdateSignal(document, articleLike, articleEntity, findings);
   auditSourceLinks(document, input.url, articleLike, articleEntity, findings);
   return { findings };
+}
+
+function auditOpenGraph(document: ParentNode, findings: Finding[]): void {
+  const missing = ["og:type", "og:image"].filter(
+    (property) => !metaValues(document, "property", property).some((value) => value.trim() !== ""),
+  );
+  const ok = missing.length === 0;
+  findings.push(
+    finding("content.open_graph", ok ? "pass" : "fail", {
+      severity: ok ? "info" : "warning",
+      category: "parseability",
+      evidence: ok ? ["Observed non-empty og:type and og:image values."] : [`Missing Open Graph fields: ${missing.join(", ")}`],
+      rationale: ok
+        ? "The page exposes the Open Graph type and image metadata measured by this rule."
+        : "The page is missing one or more measured Open Graph fields.",
+      recommendation: ok ? "No change required." : "Provide non-empty og:type and og:image metadata.",
+      evidence_kind: "standard",
+      score_impact: "informational",
+      claim_scope: [],
+      source_url: "https://ogp.me/",
+    }),
+  );
+}
+
+function auditDocumentLandmarks(document: ParentNode, findings: Finding[]): void {
+  const elements = findElements(document);
+  const hasMain = elements.some((element) => element.tagName === "main" || tokenAttribute(element, "role", "main"));
+  const hasNav = elements.some(
+    (element) => element.tagName === "nav" || tokenAttribute(element, "role", "navigation"),
+  );
+  const missing = [hasMain ? undefined : "main", hasNav ? undefined : "navigation"].filter(
+    (value): value is string => value !== undefined,
+  );
+  const ok = missing.length === 0;
+  findings.push(
+    finding("content.document_landmarks", ok ? "pass" : "fail", {
+      severity: ok ? "info" : "warning",
+      category: "parseability",
+      evidence: ok ? ["Observed main and navigation landmarks."] : [`Missing document landmarks: ${missing.join(", ")}`],
+      rationale: ok
+        ? "The static document exposes both primary-content and navigation landmarks."
+        : "The static document lacks one or more measured landmarks.",
+      recommendation: ok ? "No change required." : "Use a main landmark and a navigation landmark in the static HTML.",
+      evidence_kind: "standard",
+      score_impact: "scored",
+      claim_scope: [],
+      source_url: "https://www.w3.org/WAI/ARIA/apg/practices/landmark-regions/",
+    }),
+  );
 }
 
 function auditTitle(document: ParentNode, findings: Finding[]): void {
@@ -352,6 +407,39 @@ function auditEntityIdentity(
   );
 }
 
+function auditEntitySameAs(entities: Record<string, unknown>[], findings: Finding[]): void {
+  const identityEntities = entities.filter((entity) => hasAnyType(entity, new Set(["person", "organization"])));
+  const sameAs = identityEntities.flatMap((entity) => scalarStrings(entity.sameAs)).map(cleanText).filter(Boolean);
+  const valid = sameAs.filter(isValidHttpsUrl);
+  const result: RuleResult = identityEntities.length === 0 ? "not_applicable" : valid.length > 0 ? "pass" : "fail";
+  findings.push(
+    finding("content.entity_same_as", result, {
+      severity: result === "fail" ? "warning" : "info",
+      category: "freshness_and_entity",
+      evidence: [
+        result === "not_applicable"
+          ? "No Person or Organization JSON-LD entity was observed."
+          : valid.length > 0
+            ? `Valid sameAs URLs: ${[...new Set(valid)].join(", ")}`
+            : sameAs.length > 0
+              ? `No valid HTTPS sameAs URL was found among: ${sameAs.join(", ")}`
+              : "Person or Organization JSON-LD entities were present without sameAs.",
+      ],
+      rationale:
+        result === "not_applicable"
+          ? "Entity linking is not applicable because no Person or Organization entity was observed."
+          : result === "pass"
+            ? "At least one Person or Organization entity links to an external identity using sameAs."
+            : "The observed Person or Organization entities lack a valid HTTPS sameAs link.",
+      recommendation: result === "fail" ? "Add accurate HTTPS sameAs URLs to the relevant Person or Organization entity." : "No change required.",
+      evidence_kind: "official_recommendation",
+      score_impact: "scored",
+      claim_scope: ["google_search_structured_data"],
+      source_url: "https://developers.google.com/search/docs/appearance/structured-data/organization",
+    }),
+  );
+}
+
 function auditUpdateSignal(
   document: ParentNode,
   articleLike: boolean,
@@ -545,6 +633,15 @@ function scalarStrings(value: unknown): string[] {
 
 function isIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}(?:T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?$/.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+function isValidHttpsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.username === "" && url.password === "";
+  } catch {
+    return false;
+  }
 }
 
 function cleanText(value: string): string {

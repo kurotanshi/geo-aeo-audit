@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/kurotanshi/geo-aeo-audit/schemas/ora-result.schema.json",
+  "title": "geo-aeo Ora readiness result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "tool_version", "generated_at", "request", "ora", "crosswalk", "limitations"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "tool_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+" },
+    "generated_at": { "type": "string" },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpoint", "mode", "polls", "http_status", "cache"],
+      "properties": {
+        "endpoint": { "type": "string", "pattern": "^https://ora\\.ai/" },
+        "mode": { "enum": ["cached", "scan"] },
+        "polls": { "type": "integer", "minimum": 0, "maximum": 15 },
+        "http_status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "cache": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["age", "x_vercel_cache"],
+          "properties": {
+            "age": { "type": ["string", "null"] },
+            "x_vercel_cache": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "ora": { "type": "object", "additionalProperties": true },
+    "crosswalk": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ora_id", "mapping", "local_rule_ids", "explanation"],
+        "properties": {
+          "ora_id": { "type": "string", "minLength": 1 },
+          "mapping": { "enum": ["equivalent", "composite", "partial", "not_ported", "unmapped"] },
+          "local_rule_ids": { "type": "array", "items": { "type": "string" } },
+          "explanation": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "limitations": { "type": "array", "minItems": 5, "items": { "type": "string" } }
+  }
+}

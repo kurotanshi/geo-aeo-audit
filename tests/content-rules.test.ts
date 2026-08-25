@@ -16,6 +16,7 @@ function fullArticle(): string {
         <title>如何執行可重現的內容稽核</title>
         <meta name="description" content="逐步介紹如何執行安全且可重現的內容稽核。">
         <meta property="og:type" content="article">
+        <meta property="og:image" content="https://example.com/audit.png">
         <script type="application/ld+json">
           {
             "@context": "https://schema.org",
@@ -24,18 +25,18 @@ function fullArticle(): string {
             "datePublished": "2026-08-01T09:00:00+08:00",
             "dateModified": "2026-08-24T10:30:00+08:00",
             "author": {"@type": "Person", "name": "Kuro"},
-            "publisher": {"@type": "Organization", "name": "Example Lab"},
+            "publisher": {"@type": "Organization", "name": "Example Lab", "sameAs": "https://example.org/example-lab"},
             "citation": "https://www.rfc-editor.org/rfc/rfc9110.html"
           }
         </script>
       </head>
       <body>
-        <article>
+        <nav>文章導覽</nav><main><article>
           <h1>如何執行可重現的內容稽核</h1>
           <h2>安全傳輸</h2>
           <p>文章內容與證據。</p>
           <a href="https://www.w3.org/TR/json-ld11/">JSON-LD standard</a>
-        </article>
+        </article></main>
       </body>
     </html>`;
 }
@@ -43,7 +44,7 @@ function fullArticle(): string {
 describe("page content, entity and evidence rules", () => {
   it("passes a complete article and emits evidence-complete findings", () => {
     const result = auditPageContent({ url: URL, body: fullArticle() });
-    expect(result.findings).toHaveLength(11);
+    expect(result.findings).toHaveLength(14);
     for (const item of result.findings) {
       expect(item).toEqual(
         expect.objectContaining({
@@ -62,12 +63,15 @@ describe("page content, entity and evidence rules", () => {
       "content.title",
       "content.meta_description",
       "content.language",
+      "content.open_graph",
+      "content.document_landmarks",
       "content.heading_structure",
       "content.jsonld_validity",
       "content.article_structured_data",
       "content.author",
       "content.publication_date",
       "content.entity_identity",
+      "content.entity_same_as",
       "content.update_signal",
       "content.source_links",
     ]) {
@@ -78,7 +82,7 @@ describe("page content, entity and evidence rules", () => {
   it("uses not_applicable for article-only rules on a non-article page", () => {
     const result = auditPageContent({
       url: "https://example.com/about",
-      body: `<!doctype html><html lang="en"><head><title>About Example</title><meta name="description" content="About the Example team."></head><body><h1>About Example</h1><p>Company information.</p></body></html>`,
+      body: `<!doctype html><html lang="en"><head><title>About Example</title><meta name="description" content="About the Example team."><meta property="og:type" content="website"><meta property="og:image" content="https://example.com/about.png"></head><body><nav>Navigation</nav><main><h1>About Example</h1><p>Company information.</p></main></body></html>`,
     });
     expect(find(result, "content.jsonld_validity").result).toBe("not_applicable");
     for (const id of [
@@ -147,9 +151,61 @@ describe("page content, entity and evidence rules", () => {
 
   it("marks every content rule not tested when page content was intentionally skipped", () => {
     const result = auditPageContent({ url: URL, unavailableReason: "skipped_due_to_robots" });
-    expect(result.findings).toHaveLength(11);
+    expect(result.findings).toHaveLength(14);
     expect(result.findings.every((item) => item.result === "not_tested")).toBe(true);
     expect(result.findings.every((item) => item.evidence_kind === "empirical_observation")).toBe(true);
     expect(result.findings[0]?.evidence).toEqual([`${URL}: skipped_due_to_robots`]);
+  });
+
+  it("checks only og:type and og:image for Open Graph completeness", () => {
+    const result = auditPageContent({
+      url: URL,
+      body: '<html><head><meta property="og:type" content="website"><meta property="og:image" content="/image.png"></head><body></body></html>',
+    });
+    expect(find(result, "content.open_graph").result).toBe("pass");
+  });
+
+  it.each([
+    { body: "<main>Content</main>", missing: "navigation" },
+    { body: "<nav>Navigation</nav>", missing: "main" },
+  ])("fails when a document landmark is missing", ({ body, missing }) => {
+    const result = auditPageContent({ url: URL, body });
+    expect(find(result, "content.document_landmarks")).toMatchObject({
+      result: "fail",
+      evidence: expect.arrayContaining([expect.stringContaining(missing)]),
+    });
+  });
+
+  it("accepts equivalent ARIA landmark roles", () => {
+    const result = auditPageContent({
+      url: URL,
+      body: '<div role="main">Content</div><div role="navigation">Navigation</div>',
+    });
+    expect(find(result, "content.document_landmarks").result).toBe("pass");
+  });
+
+  it.each([
+    {
+      name: "valid HTTPS sameAs",
+      json: '{"@type":"Organization","name":"Example","sameAs":"https://example.org/profile"}',
+      result: "pass",
+    },
+    {
+      name: "entity without sameAs",
+      json: '{"@type":"Person","name":"Ada"}',
+      result: "fail",
+    },
+    { name: "no identity entity", json: '{"@type":"WebPage","name":"Page"}', result: "not_applicable" },
+    {
+      name: "non-HTTPS sameAs",
+      json: '{"@type":"Organization","name":"Example","sameAs":"http://example.org/profile"}',
+      result: "fail",
+    },
+  ])("classifies entity linking: $name", ({ json, result: expected }) => {
+    const result = auditPageContent({
+      url: URL,
+      body: `<script type="application/ld+json">${json}</script>`,
+    });
+    expect(find(result, "content.entity_same_as").result).toBe(expected);
   });
 });

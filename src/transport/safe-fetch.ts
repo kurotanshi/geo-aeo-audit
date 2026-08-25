@@ -37,6 +37,7 @@ export interface SafeResponse {
 export interface SafeFetchOptions {
   limits: AuditLimits;
   userAgent?: string;
+  accept?: string;
   deps?: TransportDeps;
   allowedOrigin?: string;
 }
@@ -122,7 +123,7 @@ type HopResult =
   | { kind: "final"; status: number; headers: http.IncomingHttpHeaders; body: Buffer; rawBodyBytes: number };
 
 /** Perform one request to a pre-validated, pinned IP. Times out the whole hop. */
-function hop(target: URL, pin: ResolvedAddress, limits: AuditLimits, userAgent: string): Promise<HopResult> {
+function hop(target: URL, pin: ResolvedAddress, limits: AuditLimits, userAgent: string, accept: string): Promise<HopResult> {
   return new Promise<HopResult>((resolve, reject) => {
     const isHttps = target.protocol === "https:";
     const lib = isHttps ? https : http;
@@ -143,7 +144,7 @@ function hop(target: URL, pin: ResolvedAddress, limits: AuditLimits, userAgent: 
       path: `${target.pathname}${target.search}`,
       headers: {
         "user-agent": userAgent,
-        accept: "*/*",
+        accept,
         "accept-encoding": "gzip, br, deflate",
       },
       lookup: pinnedLookup,
@@ -224,6 +225,7 @@ export async function safeFetch(
   const resolve = opts.deps?.resolve ?? defaultResolve;
   const isPublic = opts.deps?.isPublic ?? isPublicUnicastIp;
   const userAgent = opts.userAgent ?? USER_AGENT;
+  const accept = opts.accept ?? "*/*";
   const { limits } = opts;
 
   let current = parseAndValidate(rawUrl);
@@ -235,7 +237,7 @@ export async function safeFetch(
 
   for (;;) {
     const pin = await resolveAndVet(current.hostname, resolve, isPublic);
-    const result = await hop(current, pin, limits, userAgent);
+    const result = await hop(current, pin, limits, userAgent, accept);
 
     if (result.kind === "final") {
       return {

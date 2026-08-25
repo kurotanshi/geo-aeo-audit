@@ -42,6 +42,17 @@ describe("safeFetch happy path (fixture server)", () => {
     expect(res.contentEncoding).toBe("gzip");
   });
 
+  it("sends the configured Accept header and keeps */* as the default", async () => {
+    const configured = await safeFetch(`${fx.origin}/accept`, {
+      limits: limits(),
+      deps: allowLoopback,
+      accept: "text/markdown",
+    });
+    const defaulted = await safeFetch(`${fx.origin}/accept`, { limits: limits(), deps: allowLoopback });
+    expect(configured.body.toString()).toBe("text/markdown");
+    expect(defaulted.body.toString()).toBe("*/*");
+  });
+
   it("follows redirects within budget", async () => {
     const res = await safeFetch(`${fx.origin}/redirect-once`, { limits: limits(), deps: allowLoopback });
     expect(res.status).toBe(200);

@@ -5,21 +5,26 @@ import { runAudit } from "./audit/run.js";
 import { parseAuditConfig } from "./config.js";
 import { ConfigError, IncompleteAuditError } from "./errors.js";
 import { ExitCode, resolveExitCode, type ExitCodeValue } from "./exit.js";
+import { OraClientError } from "./ora/client.js";
+import { parseOraConfig } from "./ora/config.js";
+import { runOra } from "./ora/run.js";
 import { parseProbeConfig, readProviderApiKey } from "./probe/config.js";
 import { runProbe } from "./probe/run.js";
 import { renderHtmlReport } from "./report/html.js";
+import { renderOraHtmlReport } from "./report/ora-html.js";
 import { renderProbeHtmlReport } from "./report/probe-html.js";
 import { TOOL_VERSION } from "./version.js";
 
-const USAGE = `geo-aeo — GEO/AEO audit and citation observation CLI
+const USAGE = `geo-aeo — GEO/AEO audit, citation observation, and Ora readiness CLI
 
 Usage:
   geo-aeo audit <url> [options]
   geo-aeo probe <url> [options]
+  geo-aeo ora <url> [options]
   geo-aeo --help
   geo-aeo --version
 
-Run "geo-aeo audit --help" or "geo-aeo probe --help" for command options.
+Run "geo-aeo <command> --help" for command options.
 `;
 
 const AUDIT_USAGE = `Usage: geo-aeo audit <url> [options]
@@ -51,6 +56,16 @@ Search options:
   -h, --help         Show this help
 `;
 
+const ORA_USAGE = `Usage: geo-aeo ora <url> [options]
+
+Options:
+  --scan             Start an Ora scan instead of reading a cached report
+  --json             Print JSON result to stdout (default on)
+  --no-json          Suppress JSON output
+  --html <path>      Write single-file HTML report to <path>
+  -h, --help         Show this help
+`;
+
 const AUDIT_OPTIONS = {
   help: { type: "boolean", short: "h" },
   site: { type: "boolean" },
@@ -74,6 +89,14 @@ const PROBE_OPTIONS = {
   html: { type: "string" },
 } as const;
 
+const ORA_OPTIONS = {
+  help: { type: "boolean", short: "h" },
+  scan: { type: "boolean" },
+  json: { type: "boolean" },
+  "no-json": { type: "boolean" },
+  html: { type: "string" },
+} as const;
+
 async function main(): Promise<ExitCodeValue> {
   const [command, ...args] = process.argv.slice(2);
   if (command === "--help" || command === "-h") {
@@ -87,6 +110,7 @@ async function main(): Promise<ExitCodeValue> {
   if (command === undefined) return usageError("no command given", USAGE);
   if (command === "audit") return runAuditCommand(args);
   if (command === "probe") return runProbeCommand(args);
+  if (command === "ora") return runOraCommand(args);
   return usageError(`unknown command "${command}"`, USAGE);
 }
 
@@ -171,6 +195,48 @@ async function runProbeCommand(args: string[]): Promise<ExitCodeValue> {
   if (parsed.values.html !== undefined) {
     try {
       await writeFile(parsed.values.html, renderProbeHtmlReport(result), "utf8");
+    } catch (error) {
+      process.stderr.write(`Error: could not write HTML report: ${message(error)}\n`);
+      return ExitCode.INCOMPLETE;
+    }
+  }
+  return ExitCode.SUCCESS;
+}
+
+async function runOraCommand(args: string[]): Promise<ExitCodeValue> {
+  let parsed;
+  try {
+    parsed = parseArgs({ args, options: ORA_OPTIONS, allowPositionals: true });
+  } catch (error) {
+    return usageError(message(error), ORA_USAGE);
+  }
+  if (parsed.values.help) {
+    process.stdout.write(ORA_USAGE);
+    return ExitCode.SUCCESS;
+  }
+
+  let config;
+  try {
+    config = parseOraConfig({ values: parsed.values, positionals: parsed.positionals });
+  } catch (error) {
+    return configError(error);
+  }
+
+  let result;
+  try {
+    result = await runOra(config);
+  } catch (error) {
+    if (error instanceof OraClientError) {
+      process.stderr.write(`Error: ${error.message}\n`);
+      return ExitCode.INCOMPLETE;
+    }
+    throw error;
+  }
+
+  if (config.output.json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  if (config.output.htmlPath) {
+    try {
+      await writeFile(config.output.htmlPath, renderOraHtmlReport(result), "utf8");
     } catch (error) {
       process.stderr.write(`Error: could not write HTML report: ${message(error)}\n`);
       return ExitCode.INCOMPLETE;

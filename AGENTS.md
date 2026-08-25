@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository is a Node.js 20+ TypeScript CLI. Production code lives in `src/`: `cli.ts` is the entry point, `audit/` coordinates audits, `probe/` runs citation observations, `transport/` enforces safe fetching, `rules/` produces findings, and `report/` renders HTML. Shared configuration, schemas, scoring, and version data remain near the `src/` root. Tests live in `tests/` and generally mirror source concerns; reusable local fixtures belong in `tests/fixtures/`. Public JSON Schemas live in `schemas/`. Design proposals and archived work are recorded under `sdd/`. Treat `dist/` as generated output.
+This repository is a Node.js 20+ TypeScript CLI. Production code lives in `src/`: `cli.ts` is the entry point, `audit/` coordinates audits, `probe/` runs citation observations, `ora/` reads Ora cache entries and runs opt-in scans, `transport/` enforces safe fetching, `rules/` produces findings, `registry/` owns external-to-local check mappings, and `report/` renders HTML. Shared configuration, schemas, scoring, and version data remain near the `src/` root. Tests live in `tests/` and generally mirror source concerns; reusable local fixtures belong in `tests/fixtures/`. Public JSON Schemas live in `schemas/`. Design proposals and archived work are recorded under `sdd/`. Treat `dist/` as generated output.
 
 ## Build, Test, and Development Commands
 

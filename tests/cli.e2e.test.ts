@@ -10,6 +10,7 @@ const execFileAsync = promisify(execFile);
 // `pnpm test` runs `pnpm run build` first, so dist/cli.js exists here.
 const CLI = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
 const PROVIDER_LOADER = fileURLToPath(new URL("./fixtures/mock-provider-loader.mjs", import.meta.url));
+const ORA_LOADER = fileURLToPath(new URL("./fixtures/mock-ora-loader.mjs", import.meta.url));
 
 /** Run the built CLI; resolve with code+stdout+stderr regardless of exit code. */
 async function run(
@@ -34,6 +35,7 @@ describe("geo-aeo CLI", () => {
     expect(code).toBe(0);
     expect(stdout).toContain("Usage:");
     expect(stdout).toContain("geo-aeo audit <url>");
+    expect(stdout).toContain("geo-aeo ora <url>");
   });
 
   it("--version exits 0 and prints a semver", async () => {
@@ -48,6 +50,14 @@ describe("geo-aeo CLI", () => {
     expect(stdout).toContain("--prompts <path>");
     expect(stdout).toContain("openai | anthropic");
     expect(stdout).not.toContain("gemini");
+  });
+
+  it("ora --help documents the opt-in scan without credentials", async () => {
+    const { code, stdout } = await run(["ora", "--help"]);
+    expect(code).toBe(0);
+    expect(stdout).toContain("--scan");
+    expect(stdout).toContain("--html <path>");
+    expect(stdout.toLowerCase()).not.toContain("api key");
   });
 
   it("no command exits 2 (usage)", async () => {
@@ -68,6 +78,12 @@ describe("geo-aeo CLI", () => {
   it("missing url exits 2 (usage)", async () => {
     const { code } = await run(["audit"]);
     expect(code).toBe(2);
+  });
+
+  it("ora without a hostname exits 2 before making a request", async () => {
+    const { code, stderr } = await run(["ora"]);
+    expect(code).toBe(2);
+    expect(stderr).toContain("missing <url> argument");
   });
 
   it("invalid --fail-on exits 2 (usage)", async () => {
@@ -272,5 +288,61 @@ describe("geo-aeo CLI", () => {
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
+  });
+
+  it("reads an Ora cache through the fixed endpoint and emits its independent envelope", async () => {
+    const result = await run(["ora", "https://example.com/path"], {
+      NODE_OPTIONS: `--import=${pathToFileURL(ORA_LOADER).href}`,
+    });
+    expect(result).toMatchObject({ code: 0, stderr: "" });
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed).toMatchObject({
+      schema_version: "1.0.0",
+      request: {
+        endpoint: "https://ora.ai/api/score/example.com?include=essentials&format=audit",
+        mode: "cached",
+        polls: 0,
+        http_status: 200,
+      },
+      ora: { contractVersion: "1.21.0", score: 72, analysisStatus: "complete" },
+    });
+    expect(parsed.ora.topFixes.map((fix: { id: string }) => fix.id)).toEqual(["second", "first"]);
+    expect(parsed.crosswalk).toContainEqual(expect.objectContaining({
+      ora_id: "metadata-completeness",
+      mapping: "composite",
+    }));
+  });
+
+  it("writes an Ora scan HTML report without JSON stdout", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "geo-aeo-ora-html-"));
+    const report = join(directory, "ora.html");
+    try {
+      const result = await run([
+        "ora", "https://example.com/path", "--scan", "--no-json", "--html", report,
+      ], {
+        NODE_OPTIONS: `--import=${pathToFileURL(ORA_LOADER).href}`,
+        MOCK_ORA_EXPECT_MODE: "scan",
+      });
+      expect(result).toMatchObject({ code: 0, stdout: "", stderr: "" });
+      const html = await readFile(report, "utf8");
+      expect(html).toMatch(/^<!doctype html>/);
+      expect(html).toContain("Ora score 72/100");
+      expect(html).not.toMatch(/<script\b/i);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { mode: "404", message: "--scan" },
+    { mode: "429", message: "retry after 23 seconds" },
+  ])("returns exit 3 for an Ora $mode response", async ({ mode, message }) => {
+    const result = await run(["ora", "https://example.com/path"], {
+      NODE_OPTIONS: `--import=${pathToFileURL(ORA_LOADER).href}`,
+      MOCK_ORA_MODE: mode,
+    });
+    expect(result.code).toBe(3);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain(message);
   });
 });

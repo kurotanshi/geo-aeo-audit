@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEFAULT_LIMITS, type AuditConfig } from "../src/config.js";
 import { runAudit } from "../src/audit/run.js";
+import { TransportError } from "../src/transport/errors.js";
 import type { TransportDeps } from "../src/transport/safe-fetch.js";
 import { startFixture, type Fixture } from "./fixtures/server.js";
 
@@ -60,6 +61,12 @@ describe("runAudit technical integration", () => {
     expect(result.findings).toContainEqual(
       expect.objectContaining({ id: "technical.sitemap_membership", result: "not_tested" }),
     );
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ id: "technical.llms_txt", result: "pass", subject_url: fx.origin }),
+    );
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ id: "technical.not_found_status", result: "pass", subject_url: fx.origin }),
+    );
   });
 
   it("runs content, entity and evidence rules for fetched static HTML", async () => {
@@ -68,11 +75,14 @@ describe("runAudit technical integration", () => {
       "content.title",
       "content.meta_description",
       "content.language",
+      "content.open_graph",
+      "content.document_landmarks",
       "content.heading_structure",
       "content.article_structured_data",
       "content.author",
       "content.publication_date",
       "content.entity_identity",
+      "content.entity_same_as",
       "content.update_signal",
       "content.source_links",
     ]) {
@@ -90,10 +100,30 @@ describe("runAudit technical integration", () => {
     ]);
     expect(result.scorecards.find((item) => item.category === "parseability")?.score.value).toBe(100);
     expect(result.scorecards.find((item) => item.category === "source_and_evidence")?.score).toMatchObject({
-      value: null,
-      denominator: 0,
+      value: 0,
+      denominator: 1,
     });
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ id: "technical.trust_pages", result: "fail", subject_url: fx.origin }),
+    );
     expect(result).not.toHaveProperty("score");
+  });
+
+  it("passes all eight rules introduced by ruleset 0.3.0 on a complete fixture", async () => {
+    const result = await runAudit(config(`${fx.origin}/readiness`), { transportDeps: allowLoopback });
+    expect(result.ruleset_version).toBe("0.3.0");
+    for (const id of [
+      "technical.llms_txt",
+      "technical.not_found_status",
+      "technical.markdown_negotiation",
+      "technical.trust_pages",
+      "technical.redirect_hygiene",
+      "content.open_graph",
+      "content.document_landmarks",
+      "content.entity_same_as",
+    ]) {
+      expect(result.findings).toContainEqual(expect.objectContaining({ id, result: "pass" }));
+    }
   });
 
   it("marks initial-content checks not tested when the audit crawler is blocked", async () => {
@@ -132,7 +162,9 @@ describe("runAudit technical integration", () => {
   });
 
   it("audits sampled site pages and preserves a subject URL on every result", async () => {
+    const before = fx.requests.length;
     const result = await runAudit(config(`${fx.origin}/site-entry`, "site"), { transportDeps: allowLoopback });
+    const requests = fx.requests.slice(before);
     expect(result.findings.length).toBeGreaterThan(20);
     expect(result.findings.every((item) => typeof item.subject_url === "string")).toBe(true);
     expect(result.findings).toContainEqual(
@@ -152,5 +184,25 @@ describe("runAudit technical integration", () => {
     expect(result.metadata.sampling.applied).toBe(true);
     expect(result.metadata.sampling.selected.length).toBeGreaterThan(0);
     expect(result.metadata.sampling.selected.every((item) => /^[a-f0-9]{64}$/.test(item.hash))).toBe(true);
+    expect(requests.filter((path) => path === "/llms.txt")).toHaveLength(1);
+    expect(requests.filter((path) => path.startsWith("/geo-aeo-audit-not-found-"))).toHaveLength(1);
+    expect(result.findings.filter((item) => item.id === "technical.llms_txt")).toHaveLength(1);
+    expect(result.findings.filter((item) => item.id === "technical.not_found_status")).toHaveLength(1);
+  });
+
+  it("marks origin probes not tested when the initial fetch fails", async () => {
+    const result = await runAudit(config("https://example.com/"), {
+      fetch: async () => {
+        throw new TransportError("timeout", "timed out");
+      },
+    });
+
+    expect(result.findings).toContainEqual(expect.objectContaining({ id: "technical.transport", result: "error" }));
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ id: "technical.llms_txt", result: "not_tested" }),
+    );
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ id: "technical.not_found_status", result: "not_tested" }),
+    );
   });
 });

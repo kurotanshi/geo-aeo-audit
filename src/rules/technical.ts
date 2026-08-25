@@ -109,6 +109,7 @@ export function auditTechnicalEligibility(input: TechnicalAuditInput): Technical
     auditIndexability(page, html, findings, blockers);
     auditCanonical(page.url, html, findings);
     auditInitialHtml(html, findings);
+    auditRedirectHygiene(html, findings);
   }
   auditProviderRobots(page.url, input.robots, agents, findings, blockers);
   auditSitemap(page.url, input.sitemapUrls, input.sitemapDiscoveryAttempted, findings);
@@ -136,6 +137,7 @@ function addUnavailableContentFindings(url: string, findings: Finding[], reason:
     ["technical.indexability", "access_and_eligibility", "scored"],
     ["technical.canonical", "discoverability", "scored"],
     ["technical.initial_html_content", "parseability", "informational"],
+    ["technical.redirect_hygiene", "access_and_eligibility", "scored"],
   ] as const;
   for (const [id, category, scoreImpact] of specs) {
     findings.push(
@@ -360,13 +362,7 @@ function auditSitemap(
 
 function auditInitialHtml(html: string, findings: Finding[]): void {
   const hasScripts = /<script\b/i.test(html);
-  const visibleText = html
-    .replace(/<!--([\s\S]*?)-->/g, " ")
-    .replace(/<(script|style|noscript|svg)\b[\s\S]*?<\/\1\s*>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&(?:nbsp|amp|lt|gt|quot|apos);/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const visibleText = initialVisibleText(html);
   const needsRendering = hasScripts && visibleText.length < 80;
   findings.push(
     finding("technical.initial_html_content", needsRendering ? "not_tested" : "pass", {
@@ -385,6 +381,52 @@ function auditInitialHtml(html: string, findings: Finding[]): void {
       source_url: "https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics",
     }),
   );
+}
+
+function auditRedirectHygiene(html: string, findings: Finding[]): void {
+  const metaRefresh = extractTags(html, "meta").some(
+    (tag) => (tag["http-equiv"] ?? "").trim().toLowerCase() === "refresh",
+  );
+  const inlineScripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)]
+    .map((match) => match[1] ?? "")
+    .join("\n");
+  const jsRedirect =
+    initialVisibleText(html).length < 80 &&
+    /\b(?:window\.)?location\.href\s*=|\b(?:window\.)?location\.replace\s*\(|\bwindow\.location\s*=/i.test(
+      inlineScripts,
+    );
+  const failed = metaRefresh || jsRedirect;
+  const evidence = [
+    `Meta refresh observed: ${metaRefresh}.`,
+    `JavaScript-only redirect stub observed: ${jsRedirect}.`,
+  ];
+  findings.push(
+    finding("technical.redirect_hygiene", failed ? "fail" : "pass", {
+      severity: failed ? "warning" : "info",
+      category: "access_and_eligibility",
+      evidence,
+      rationale: failed
+        ? "The initial HTML depends on a client-side redirect that non-rendering agents may not follow."
+        : "No meta refresh or low-content JavaScript-only redirect stub was observed.",
+      recommendation: failed
+        ? "Use an appropriate HTTP redirect and serve the destination URL directly to non-rendering clients."
+        : "No change required.",
+      evidence_kind: "empirical_observation",
+      score_impact: "scored",
+      claim_scope: [],
+      source_url: "https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections",
+    }),
+  );
+}
+
+function initialVisibleText(html: string): string {
+  return html
+    .replace(/<!--([\s\S]*?)-->/g, " ")
+    .replace(/<(script|style|noscript|svg)\b[\s\S]*?<\/\1\s*>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&(?:nbsp|amp|lt|gt|quot|apos);/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function providerBlocker(ruleId: string, appliesTo: string[], evidence: string[]): Blocker {
