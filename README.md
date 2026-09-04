@@ -18,12 +18,13 @@
 
 需要 Node.js 20 以上。
 
-不安裝、直接執行（二選一）：
+不囉唆馬上試試：
 
 ```bash
-npx --yes geo-aeo-audit audit https://example.com/
-pnpm dlx geo-aeo-audit audit https://example.com/
+npx --yes geo-aeo-audit audit [https://kurohsu.dev](https://example.com/) --site --html audit.html --html-lang zh-TW > audit.json
 ```
+
+這段指令會在目前的目錄下生成兩個報告檔案： `audit.json` 與 `audit.html`，可直接打開瀏覽。
 
 也可以使用 pnpm 安裝成全域 CLI：
 
