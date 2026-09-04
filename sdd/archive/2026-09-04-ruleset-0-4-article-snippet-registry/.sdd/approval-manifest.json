@@ -1,0 +1,84 @@
+{
+  "acceptance_conditions": [
+    "情境：對 audit.json 中原本失敗的 14 個 `/tags/*.html`／`/misc/` 型列表頁重跑 audit，六條文章限定規則全為 `not_applicable` 且沒有任何 `fail`，包含恰好一個 `<article>` 卡片的 9 頁",
+    "情境：單一 `<article>` 且含 Article JSON-LD 的文章頁，所有 content 規則結果與 0.3.0 相同",
+    "情境：頁面含無法解析的 JSON-LD、無 `og:type=article`，`content.jsonld_validity` 為 error，六條文章限定規則為 not_applicable",
+    "情境：頁面含 `<meta name=\"robots\" content=\"nosnippet\">`，`technical.snippet_directives` 為 fail，blockers 中有一筆 rule_id 為該規則、applies_to 含 google_ai_overviews 與 google_ai_mode、not_asserted_for 含 chatgpt_search；`technical.indexability` 仍為 pass",
+    "情境：頁面 header 為 `X-Robots-Tag: max-snippet: 0`（冒號後有空白），`technical.snippet_directives` 為 fail；改為 `max-snippet:-1` 則為 pass",
+    "情境：頁面含 `<meta name=\"robots\" content=\"noindex\">`，`technical.indexability` 的 blocker applies_to 同時含 google_search 與 google_ai_overviews",
+    "情境：頁面無任何 snippet directive，`technical.snippet_directives` 為 pass，evidence 註明未觀察到限制指示",
+    "情境：頁面回 404 或因 robots 略過，`technical.snippet_directives` 為 not_tested，與其他 content 規則一致",
+    "情境：audit JSON 的 ruleset_version 為 0.4.0，findings 中出現 `technical.robots.apple.applebot` 等新 token 的 finding，registry 每筆 checkedAt 為 2026-09-03，`validateAgentRegistry()` 不拋錯",
+    "情境：`--html-lang zh-TW` 報告中 `technical.snippet_directives` 的說明與建議為中文",
+    "情境：`technical.snippet_directives` 遇到 `noarchive` 或 `nocache` 時，finding 的 source URL 是 2023 年 Bing Webmaster Blog 公告；bingbot finding 使用正規 crawler 說明頁 URL",
+    "情境：`pnpm run typecheck` 與 `pnpm test` 全部通過，schema-compat 測試對新輸出驗證成功"
+  ],
+  "approval_model_version": 1,
+  "change_type": "修 bug",
+  "extensions": {
+    "sdd.schema": {
+      "schema_version": 2
+    }
+  },
+  "scope": [
+    "**A. 文章分類**",
+    "`articleLike` 改為：只有 `og:type=article` 或 Article 家族 JSON-LD 成立才視為文章；`<article>` 元素數量不再單獨構成文章訊號。沒有這兩種明確訊號的頁面，包含單一 `<article>` 卡片列表頁，文章限定規則回 `not_applicable`。代價是沒有 metadata 的純 HTML 文章頁會得到 `not_applicable`，不再得到作者與日期缺漏回饋。JSON-LD 無法解析且沒有 `og:type=article` 的頁面同樣視為非文章：`content.jsonld_validity` 仍回 `error`，六條文章限定規則回 `not_applicable` 而不是 `error`。",
+    "**B. 新規則 `technical.snippet_directives`**",
+    "類別 `access_and_eligibility`、`score_impact: scored`、`evidence_kind: official_behavior`。",
+    "來源：`<meta name=\"robots\">`、`<meta name=\"googlebot\">` 的 content 與 `X-Robots-Tag` header，與 `technical.indexability` 共用同一組 directive 擷取；Bing 的 `noarchive`／`nocache` 證據引用 2023 年 Bing Webmaster Blog 公告 `https://blogs.bing.com/webmaster/september-2023/Announcing-new-options-for-webmasters-to-control-usage-of-their-content-in-Bing-Chat`，該頁靜態抓取可見兩個 directive 的說明。",
+    "解析依 Google robots meta 規範：directive 大小寫不敏感；`max-snippet` 的冒號後允許空白（規範寫法為 `max-snippet: [number]`），因此擷取要先以逗號切分、再去除空白，而不是以空白與逗號一起切分。`X-Robots-Tag` 帶 UA 前綴的值（如 `googlebot: nosnippet`）視為適用所有 UA，與 `technical.indexability` 現行處理相同，不做 UA 區分。",
+    "`nosnippet` 或 `max-snippet:0`（大小寫不敏感）→ `fail`，severity `blocker`，並產生 `provider_eligibility` blocker，`applies_to` 為 Google 與 Apple 官方文件所述的 AI 產品範圍（`google_ai_overviews`、`google_ai_mode`，以及 Applebot 文件對應的範圍），`not_asserted_for` 為其餘範圍。此設計與 `technical.indexability` 對 `noindex` 的處理一致；若偏好只給 warning 不產生 blocker，請在核准前提出。",
+    "`noarchive` 或 `nocache` → `fail`，severity `blocker`，blocker `applies_to` 僅 Bing Copilot 範圍。",
+    "`data-nosnippet` 屬性只計數並寫入 evidence，不影響結果，因為它是局部排除。",
+    "無上述 directive → `pass`。頁面未取得、非 2xx 或因 robots 略過時 → `not_tested`，與現有 content 規則的 unavailable 路徑一致。",
+    "`technical.indexability` 的判定邏輯不變；其 noindex blocker 的 `applies_to` 與 finding 的 `claim_scope` 擴充涵蓋 `google_ai_overviews` 與 `google_ai_mode`，因為 Google「AI features and your website」把 `noindex` 與 `nosnippet` 列為同一組 AI 內容控制項。",
+    "**C. registry 更新**",
+    "既有項目：Anthropic 三筆來源改 `https://support.claude.com/...` 同路徑；bingbot 來源改正規 Bing 官方 crawler 說明頁（`https://www.bing.com/webmasters/help/which-crawlers-does-bing-use-8c184ec0`）；Googlebot `productScopes` 加入 `google_ai_overviews`、`google_ai_mode`；bingbot `productScopes` 加入 Bing Copilot 範圍；`CHECKED_AT` 改 `2026-09-03`（全部 11 筆已於當日重新核對）。",
+    "新增上列 15 個 token，`robotsApplicability` 依各官方頁面逐一填寫：Applebot、Meta-ExternalAgent、meta-webindexer、Amazonbot、Amzn-SearchBot、CCBot、MistralAI 三筆、DuckAssistBot 預期為 `applies`；Applebot-Extended 為 `control_token`；Meta-ExternalFetcher、Amzn-User 為 `may_apply`；Google-Agent、Google-GeminiNotebook 為 `generally_ignored`。實作時每筆都要以官方頁面核對 token 與 robots 說法，核對不到的不加並在完成回報中列出。",
+    "`provider` 型別聯集擴充為涵蓋 apple、meta、amazon、commoncrawl、mistral、duckduckgo。",
+    "`RULESET_VERSION` 由 `0.3.0` 升為 `0.4.0`。",
+    "設計取向：AI 產品範圍字串沿用現有 `GOOGLE_NOINDEX_SCOPES` 模式，在 `technical.ts` 以常數列出、在 registry 的 `productScopes` 同步列出，兩處以測試比對一致；集中為單一來源另案處理（原因：本提案只修正判定與 registry 內容，不改資料形狀）。",
+    "**保持不變**",
+    "`SCHEMA_VERSION` 維持 `1.1.0`；新 finding id 與新 claim scope 都是既有 schema 允許的字串，不改 `schemas/audit-result.schema.json`。",
+    "Ora crosswalk（`src/registry/ora-checks.ts`）、README、CLI 選項不變。",
+    "**不在範圍**",
+    "評估中的第四項（schema 系列規則降級、可見日期偵測、`initial_html_content` 改 scored）與第五項（Organization 子型別、hreflang、中文日期格式）。",
+    "Bytespider、xAI、Felo、Cohere、Brave、You.com：無官方文件或官方明言不適用 robots，不加入。"
+  ],
+  "short_name": "ruleset-0-4-article-snippet-registry",
+  "tasks": [
+    {
+      "text": "新增失敗回歸測試：含多個 `<article>` 卡片、無 og:type=article、無 Article JSON-LD 的列表頁，六條文章限定規則應為 not_applicable 且無任何 fail"
+    },
+    {
+      "text": "修正 `articleLike` 判定，讓列表頁測試通過，且既有單一 `<article>` 文章頁測試維持原結果"
+    },
+    {
+      "text": "更新 registry 既有項目：Anthropic 三筆來源 URL、bingbot 來源 URL、Googlebot 與 bingbot 的 productScopes、CHECKED_AT 改 2026-09-03，noindex blocker 的 applies_to 同步涵蓋 google_ai_overviews 與 google_ai_mode，並同步 agent-registry 與 technical-rules 測試"
+    },
+    {
+      "text": "逐一以官方頁面核對後新增 Applebot、Applebot-Extended、Meta 三筆、Amazon 三筆、CCBot、MistralAI 三筆、DuckAssistBot、Google-Agent、Google-GeminiNotebook，擴充 provider 型別，更新 agent-registry 測試的 token 清單；核對不到的不加並回報"
+    },
+    {
+      "text": "新增失敗測試：nosnippet meta、X-Robots-Tag `max-snippet:0` 與 `max-snippet: 0`（冒號後有空白）各自使 `technical.snippet_directives` 為 fail 並產生 applies_to 含 google_ai_overviews 與 google_ai_mode 的 provider_eligibility blocker；noarchive 為 fail 且 blocker 僅 Bing Copilot 範圍；`max-snippet:-1` 與無 directive 為 pass；頁面不可用為 not_tested；`technical.indexability` 結果不受影響"
+    },
+    {
+      "text": "實作 `technical.snippet_directives`，與 `technical.indexability` 共用 directive 擷取，讓第 5 條測試通過"
+    },
+    {
+      "text": "為 `technical.snippet_directives` 補 zh-TW 報告文案，並以 html-report 測試確認 zh-TW 報告中該 finding 的 rationale 與 recommendation 不回落英文"
+    },
+    {
+      "text": "RULESET_VERSION 升為 0.4.0，更新 run-audit 測試的版本字串，`pnpm run typecheck` 與 `pnpm test` 全部通過"
+    },
+    {
+      "text": "新增失敗回歸測試：只有一個 `<article>` 卡片、頁面唯一的 h1 在卡片外、無 `og:type=article` 且無 Article JSON-LD 時，六條文章限定規則應為 `not_applicable` 且無任何 `fail`"
+    },
+    {
+      "text": "修正 `articleLike` 只接受 `og:type=article` 或 Article 家族 JSON-LD，讓單卡片列表頁回歸測試通過；為三個只靠 `<article>` 元素取得文章判定的既有 content-rules 測試 fixture 補上 `og:type=article`，維持其原斷言，其餘既有文章頁結果不變"
+    },
+    {
+      "text": "修正 Bing 證據與 crawler 來源：`technical.snippet_directives` 的 Bing directive source URL 改為 2023 年 Bing Webmaster Blog 公告，bingbot `officialSourceUrl` 改為正規 `/help/which-crawlers-does-bing-use-8c184ec0`，並同步測試"
+    }
+  ]
+}

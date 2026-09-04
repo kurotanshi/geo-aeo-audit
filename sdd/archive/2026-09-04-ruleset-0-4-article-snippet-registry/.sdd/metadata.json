@@ -1,0 +1,123 @@
+{
+  "approval": {
+    "approval_model_version": 1,
+    "manifest_sha256": "7ebd3524eb9b218eb59abc053eab57eb0d65d56dbf6c97954ad750ed8fc3505c",
+    "state": "active"
+  },
+  "attestation": {
+    "attestation_version": 1,
+    "projection": {
+      "metadata": {
+        "approval": {
+          "approval_model_version": 1,
+          "manifest_sha256": "7ebd3524eb9b218eb59abc053eab57eb0d65d56dbf6c97954ad750ed8fc3505c",
+          "state": "active"
+        },
+        "last_operation": {
+          "kind": "archive",
+          "operation_id": "867671db7e01818cff8e5874dce293a2a0644851bd906c33b32a36c4dd293b89"
+        },
+        "metadata_version": 1,
+        "revision": null,
+        "terminal": {
+          "archive_date": "2026-09-04",
+          "destination_directory": "2026-09-04-ruleset-0-4-article-snippet-registry",
+          "operation": {
+            "kind": "archive",
+            "operation_id": "867671db7e01818cff8e5874dce293a2a0644851bd906c33b32a36c4dd293b89"
+          },
+          "short_name": "ruleset-0-4-article-snippet-registry",
+          "source_snapshot": {
+            "proposal_sha256": "1607cca01d2a9c3975135b1ee99aca2dc8dcb8a9f753fcbc628a039490796178",
+            "snapshot_digest": "fddd0cdd4ef1db6e774bed097bdce3df830a57391170d937abb4ba767e35216c",
+            "snapshot_version": 1,
+            "tasks_sha256": "b94f0ed0624a18435c1e830bb53f64ee0ac2c12f96c1429a1fd57fc84d99e083"
+          },
+          "source_status": "approved",
+          "summary": "完成 ruleset 0.4.0：修正文章分類、加入 snippet directive 稽核與 26 筆 agent registry，並通過 12 項驗收與 204 項測試。",
+          "terminal_metadata_version": 1,
+          "terminal_status": "completed",
+          "timestamp": "2026-09-04T04:41:37Z"
+        }
+      },
+      "status": "completed",
+      "tasks": [
+        {
+          "completed": true,
+          "ordinal": 1
+        },
+        {
+          "completed": true,
+          "ordinal": 2
+        },
+        {
+          "completed": true,
+          "ordinal": 3
+        },
+        {
+          "completed": true,
+          "ordinal": 4
+        },
+        {
+          "completed": true,
+          "ordinal": 5
+        },
+        {
+          "completed": true,
+          "ordinal": 6
+        },
+        {
+          "completed": true,
+          "ordinal": 7
+        },
+        {
+          "completed": true,
+          "ordinal": 8
+        },
+        {
+          "completed": true,
+          "ordinal": 9
+        },
+        {
+          "completed": true,
+          "ordinal": 10
+        },
+        {
+          "completed": true,
+          "ordinal": 11
+        }
+      ]
+    },
+    "projection_sha256": "565e0a89bb5810ad10798f641a64aac679fb1eb09d9566507b6e805aa735b54d"
+  },
+  "last_operation": {
+    "kind": "archive",
+    "operation_id": "867671db7e01818cff8e5874dce293a2a0644851bd906c33b32a36c4dd293b89"
+  },
+  "metadata_version": 1,
+  "revision": null,
+  "terminal": {
+    "archive_date": "2026-09-04",
+    "destination_directory": "2026-09-04-ruleset-0-4-article-snippet-registry",
+    "operation": {
+      "kind": "archive",
+      "operation_id": "867671db7e01818cff8e5874dce293a2a0644851bd906c33b32a36c4dd293b89"
+    },
+    "short_name": "ruleset-0-4-article-snippet-registry",
+    "source_snapshot": {
+      "proposal_sha256": "1607cca01d2a9c3975135b1ee99aca2dc8dcb8a9f753fcbc628a039490796178",
+      "snapshot_digest": "fddd0cdd4ef1db6e774bed097bdce3df830a57391170d937abb4ba767e35216c",
+      "snapshot_version": 1,
+      "tasks_sha256": "b94f0ed0624a18435c1e830bb53f64ee0ac2c12f96c1429a1fd57fc84d99e083"
+    },
+    "source_status": "approved",
+    "summary": "完成 ruleset 0.4.0：修正文章分類、加入 snippet directive 稽核與 26 筆 agent registry，並通過 12 項驗收與 204 項測試。",
+    "terminal_metadata_version": 1,
+    "terminal_status": "completed",
+    "timestamp": "2026-09-04T04:41:37Z"
+  },
+  "writer": {
+    "engine": "sdd-workflow",
+    "version": "1.2.0"
+  }
+}

@@ -140,6 +140,29 @@ describe("renderHtmlReport", () => {
     expect(html).toContain("Add a clear primary heading.");
   });
 
+  it("translates snippet directive guidance in Traditional Chinese", () => {
+    const result = maliciousResult();
+    result.findings.push({
+      id: "technical.snippet_directives",
+      result: "fail",
+      severity: "blocker",
+      category: "access_and_eligibility",
+      score_impact: "scored",
+      evidence: ["Observed nosnippet directive."],
+      rationale: "One or more observed robots directives limit whether documented AI products can use page content for snippets or answers.",
+      recommendation: "Remove or narrow the snippet restriction directives when the page should remain eligible for the affected AI products.",
+      evidence_kind: "official_behavior",
+      claim_scope: ["google_ai_overviews", "google_ai_mode"],
+    });
+    result.scorecards = buildScorecards(result.findings);
+
+    const html = renderHtmlReport(result, "zh-TW");
+    expect(html).toContain("觀察到會限制 Google、Apple 或 Bing Copilot 產品使用頁面內容的 snippet 指示。");
+    expect(html).toContain("若頁面應維持受影響 AI 產品的資格，請移除或縮小 snippet 限制指示。");
+    expect(html).not.toContain("One or more observed robots directives limit");
+    expect(html).not.toContain("Remove or narrow the snippet restriction directives");
+  });
+
   it("escapes untrusted text and emits only safe HTTP(S) links", () => {
     const html = renderHtmlReport(maliciousResult());
     const elements = findElements(parse(html));

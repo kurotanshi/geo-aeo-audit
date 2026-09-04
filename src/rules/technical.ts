@@ -54,7 +54,19 @@ type FindingFields = Omit<Finding, "id" | "result"> & {
   source_url?: string;
 };
 
-const GOOGLE_NOINDEX_SCOPES = ["google_search", "google_discover", "google_images", "google_video", "google_news"];
+const GOOGLE_NOINDEX_SCOPES = [
+  "google_search",
+  "google_discover",
+  "google_images",
+  "google_video",
+  "google_news",
+  "google_ai_overviews",
+  "google_ai_mode",
+];
+const GOOGLE_SNIPPET_SCOPES = ["google_ai_overviews", "google_ai_mode"];
+const APPLE_SNIPPET_SCOPES = ["apple_ai_answers"];
+const BING_COPILOT_SCOPES = ["bing_copilot"];
+const SNIPPET_DIRECTIVE_SCOPES = [...GOOGLE_SNIPPET_SCOPES, ...APPLE_SNIPPET_SCOPES, ...BING_COPILOT_SCOPES];
 
 /** Run the technical eligibility rules without making any network requests. */
 export function auditTechnicalEligibility(input: TechnicalAuditInput): TechnicalAuditResult {
@@ -107,6 +119,7 @@ export function auditTechnicalEligibility(input: TechnicalAuditInput): Technical
     addUnavailableContentFindings(page.url, findings, "skipped_due_to_robots");
   } else {
     auditIndexability(page, html, findings, blockers);
+    auditSnippetDirectives(page, html, findings, blockers);
     auditCanonical(page.url, html, findings);
     auditInitialHtml(html, findings);
     auditRedirectHygiene(html, findings);
@@ -135,6 +148,7 @@ function addUnavailablePageFindings(url: string, findings: Finding[], reason: st
 function addUnavailableContentFindings(url: string, findings: Finding[], reason: string): void {
   const specs = [
     ["technical.indexability", "access_and_eligibility", "scored"],
+    ["technical.snippet_directives", "access_and_eligibility", "scored"],
     ["technical.canonical", "discoverability", "scored"],
     ["technical.initial_html_content", "parseability", "informational"],
     ["technical.redirect_hygiene", "access_and_eligibility", "scored"],
@@ -188,14 +202,7 @@ function auditIndexability(
   findings: Finding[],
   blockers: Blocker[],
 ): void {
-  const directives = [
-    ...headerValues(page.headers, "x-robots-tag"),
-    ...extractTags(html, "meta")
-      .filter((tag) => ["robots", "googlebot"].includes((tag.name ?? "").toLowerCase()))
-      .map((tag) => tag.content ?? ""),
-  ]
-    .flatMap((value) => value.toLowerCase().split(/[\s,]+/))
-    .filter(Boolean);
+  const directives = extractRobotsDirectives(page, html);
   const noindex = directives.includes("noindex") || directives.includes("none");
   findings.push(
     finding("technical.indexability", noindex ? "fail" : "pass", {
@@ -215,6 +222,83 @@ function auditIndexability(
   if (noindex) {
     blockers.push(providerBlocker("technical.indexability", GOOGLE_NOINDEX_SCOPES, ["Observed a noindex directive."]));
   }
+}
+
+function auditSnippetDirectives(
+  page: TechnicalPageObservation,
+  html: string,
+  findings: Finding[],
+  blockers: Blocker[],
+): void {
+  const directives = extractRobotsDirectives(page, html);
+  const dataNosnippetCount = countDataNosnippetAttributes(html);
+  const googleRestricted = directives.some(
+    (directive) => directive === "nosnippet" || directive === "max-snippet:0",
+  );
+  const bingRestricted = directives.includes("noarchive") || directives.includes("nocache");
+  const restricted = googleRestricted || bingRestricted;
+  const evidence = [
+    restricted
+      ? `Observed snippet restriction directives: ${directives.filter((directive) => directive === "nosnippet" || directive === "max-snippet:0" || directive === "noarchive" || directive === "nocache").join(", ")}.`
+      : "No snippet restriction directive was observed.",
+    `data-nosnippet attributes observed: ${dataNosnippetCount}.`,
+  ];
+  findings.push(
+    finding("technical.snippet_directives", restricted ? "fail" : "pass", {
+      severity: restricted ? "blocker" : "info",
+      category: "access_and_eligibility",
+      evidence,
+      rationale: restricted
+        ? "One or more observed robots directives limit whether documented AI products can use page content for snippets or answers."
+        : "No page-level directive was observed that limits documented AI snippet or answer use.",
+      recommendation: restricted
+        ? "Remove or narrow the snippet restriction directives when the page should remain eligible for the affected AI products."
+        : "No change required.",
+      evidence_kind: "official_behavior",
+      score_impact: "scored",
+      claim_scope: SNIPPET_DIRECTIVE_SCOPES,
+      source_url:
+        bingRestricted && !googleRestricted
+          ? "https://blogs.bing.com/webmaster/september-2023/Announcing-new-options-for-webmasters-to-control-usage-of-their-content-in-Bing-Chat"
+          : "https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag",
+    }),
+  );
+  if (googleRestricted) {
+    blockers.push(
+      providerBlocker("technical.snippet_directives", [...GOOGLE_SNIPPET_SCOPES, ...APPLE_SNIPPET_SCOPES], [
+        "Observed nosnippet or max-snippet:0 content restriction.",
+      ]),
+    );
+  }
+  if (bingRestricted) {
+    blockers.push(
+      providerBlocker("technical.snippet_directives", BING_COPILOT_SCOPES, [
+        "Observed noarchive or nocache content restriction.",
+      ]),
+    );
+  }
+}
+
+function extractRobotsDirectives(page: TechnicalPageObservation, html: string): string[] {
+  return [
+    ...headerValues(page.headers, "x-robots-tag"),
+    ...extractTags(html, "meta")
+      .filter((tag) => ["robots", "googlebot"].includes((tag.name ?? "").toLowerCase()))
+      .map((tag) => tag.content ?? ""),
+  ]
+    .flatMap((value) => value.split(","))
+    .map((value) => value.trim().toLowerCase().replace(/\s+/g, ""))
+    .map((value) => {
+      if (value !== "" && value.includes(":") && !value.startsWith("max-snippet:")) {
+        return value.slice(value.indexOf(":") + 1);
+      }
+      return value;
+    })
+    .filter(Boolean);
+}
+
+function countDataNosnippetAttributes(html: string): number {
+  return [...html.matchAll(/<[a-z][^>]*\bdata-nosnippet(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?(?=\s|\/?>)/gi)].length;
 }
 
 export function auditCanonical(pageUrl: string, html: string, findings: Finding[]): string | undefined {

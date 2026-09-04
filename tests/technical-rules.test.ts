@@ -70,6 +70,8 @@ describe("technical eligibility rules", () => {
 
     const noindex = result.blockers.find((blocker) => blocker.rule_id === "technical.indexability");
     expect(noindex?.applies_to).toContain("google_search");
+    expect(noindex?.applies_to).toContain("google_ai_overviews");
+    expect(noindex?.applies_to).toContain("google_ai_mode");
     expect(noindex?.not_asserted_for).toContain("chatgpt_search");
 
     expect(result.blockers.some((blocker) => blocker.rule_id === "technical.robots.openai.oai_searchbot")).toBe(true);
@@ -79,6 +81,77 @@ describe("technical eligibility rules", () => {
     );
     expect(finding(result, "technical.robots.openai.chatgpt_user").severity).toBe("warning");
     expect(finding(result, "technical.robots.perplexity.perplexity_user").severity).toBe("warning");
+  });
+
+  it.each([
+    {
+      name: "nosnippet meta",
+      page: {
+        url: URL,
+        status: 200,
+        headers: {},
+        body: '<html><head><meta name="robots" content="nosnippet"></head><body>content</body></html>',
+      },
+    },
+    {
+      name: "max-snippet without whitespace",
+      page: { url: URL, status: 200, headers: { "x-robots-tag": "max-snippet:0" }, body: "content" },
+    },
+    {
+      name: "max-snippet with whitespace",
+      page: { url: URL, status: 200, headers: { "x-robots-tag": "max-snippet: 0" }, body: "content" },
+    },
+  ])("fails snippet eligibility for $name", ({ page }) => {
+    const result = auditTechnicalEligibility(input({ page }));
+    expect(finding(result, "technical.snippet_directives")).toMatchObject({
+      result: "fail",
+      severity: "blocker",
+    });
+    expect(result.blockers).toContainEqual(
+      expect.objectContaining({
+        rule_id: "technical.snippet_directives",
+        kind: "provider_eligibility",
+        applies_to: expect.arrayContaining(["google_ai_overviews", "google_ai_mode"]),
+      }),
+    );
+    expect(finding(result, "technical.indexability").result).toBe("pass");
+  });
+
+  it("scopes noarchive and nocache snippet blockers to Bing Copilot", () => {
+    const result = auditTechnicalEligibility(
+      input({ page: { url: URL, status: 200, headers: { "x-robots-tag": "noarchive" }, body: "content" } }),
+    );
+    expect(finding(result, "technical.snippet_directives")).toMatchObject({
+      result: "fail",
+      severity: "blocker",
+      source_url: "https://blogs.bing.com/webmaster/september-2023/Announcing-new-options-for-webmasters-to-control-usage-of-their-content-in-Bing-Chat",
+    });
+    expect(result.blockers).toContainEqual(
+      expect.objectContaining({
+        rule_id: "technical.snippet_directives",
+        applies_to: ["bing_copilot"],
+      }),
+    );
+    expect(finding(result, "technical.indexability").result).toBe("pass");
+  });
+
+  it.each([
+    { name: "unrestricted max-snippet", header: "max-snippet:-1" },
+    { name: "no snippet directive", header: undefined },
+  ])("passes snippet eligibility for $name", ({ header }) => {
+    const result = auditTechnicalEligibility(
+      input({ page: { url: URL, status: 200, headers: header === undefined ? {} : { "x-robots-tag": header }, body: "content" } }),
+    );
+    expect(finding(result, "technical.snippet_directives")).toMatchObject({ result: "pass" });
+    expect(result.blockers.some((blocker) => blocker.rule_id === "technical.snippet_directives")).toBe(false);
+  });
+
+  it.each([
+    { name: "missing page", page: undefined, unavailableReason: "skipped_due_to_robots" },
+    { name: "non-2xx page", page: { url: URL, status: 404, headers: {}, body: "not found" } },
+  ])("marks snippet eligibility not tested for $name", ({ page, unavailableReason }) => {
+    const result = auditTechnicalEligibility(input({ page, unavailableReason }));
+    expect(finding(result, "technical.snippet_directives").result).toBe("not_tested");
   });
 
   it("treats Google-Extended as an explicit control token, not an HTTP crawler", () => {

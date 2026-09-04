@@ -98,6 +98,44 @@ describe("page content, entity and evidence rules", () => {
     expect(result.findings.filter((item) => item.result === "fail")).toEqual([]);
   });
 
+  it("does not classify a multi-card article listing as an article", () => {
+    const result = auditPageContent({
+      url: "https://example.com/tags/audit",
+      body: `<!doctype html><html lang="en"><head><title>Audit articles</title><meta name="description" content="All audit articles"><meta property="og:type" content="website"><meta property="og:image" content="/audit.png"></head><body><nav>Navigation</nav><main><h1>Audit articles</h1><article><h2>First article</h2><p>Summary</p></article><article><h2>Second article</h2><p>Summary</p></article></main></body></html>`,
+    });
+
+    for (const id of [
+      "content.article_structured_data",
+      "content.author",
+      "content.publication_date",
+      "content.update_signal",
+      "content.entity_identity",
+      "content.source_links",
+    ]) {
+      expect(find(result, id).result).toBe("not_applicable");
+    }
+    expect(result.findings.filter((item) => item.result === "fail")).toEqual([]);
+  });
+
+  it("does not classify a single-card article listing as an article", () => {
+    const result = auditPageContent({
+      url: "https://example.com/tags/audit",
+      body: `<!doctype html><html lang="en"><head><title>Audit articles</title><meta name="description" content="All audit articles"><meta property="og:type" content="website"><meta property="og:image" content="/audit.png"></head><body><nav>Navigation</nav><main><h1>Audit articles</h1><article><h2>Only article card</h2><a href="/articles/audit">Read more</a><a href="/tags/audit">Audit tag</a></article></main></body></html>`,
+    });
+
+    for (const id of [
+      "content.article_structured_data",
+      "content.author",
+      "content.publication_date",
+      "content.update_signal",
+      "content.entity_identity",
+      "content.source_links",
+    ]) {
+      expect(find(result, id).result).toBe("not_applicable");
+    }
+    expect(result.findings.filter((item) => item.result === "fail")).toEqual([]);
+  });
+
   it("validates an explicit Person entity on a non-article profile page", () => {
     const result = auditPageContent({
       url: "https://example.com/people/ada",
@@ -123,16 +161,34 @@ describe("page content, entity and evidence rules", () => {
   it("reports invalid JSON-LD as an error, not a failed content claim", () => {
     const result = auditPageContent({
       url: URL,
-      body: `<html lang="en"><head><title>Article</title><meta name="description" content="Description"><script type="application/ld+json">{"@type":"Article",}</script></head><body><article><h1>Article</h1></article></body></html>`,
+      body: `<html lang="en"><head><title>Article</title><meta name="description" content="Description"><meta property="og:type" content="article"><script type="application/ld+json">{"@type":"Article",}</script></head><body><article><h1>Article</h1></article></body></html>`,
     });
     expect(find(result, "content.jsonld_validity")).toMatchObject({ result: "error", severity: "error" });
     expect(find(result, "content.article_structured_data").result).toBe("error");
   });
 
+  it("keeps article rules not applicable for invalid JSON-LD without an article signal", () => {
+    const result = auditPageContent({
+      url: URL,
+      body: `<html lang="en"><head><title>Listing</title><meta name="description" content="Description"><script type="application/ld+json">{"@type":"Article",}</script></head><body><article><h2>Article card</h2></article></body></html>`,
+    });
+    expect(find(result, "content.jsonld_validity")).toMatchObject({ result: "error", severity: "error" });
+    for (const id of [
+      "content.article_structured_data",
+      "content.author",
+      "content.publication_date",
+      "content.update_signal",
+      "content.entity_identity",
+      "content.source_links",
+    ]) {
+      expect(find(result, id).result).toBe("not_applicable");
+    }
+  });
+
   it("accepts visible fallback author and publication signals but keeps missing Article JSON-LD separate", () => {
     const result = auditPageContent({
       url: URL,
-      body: `<!doctype html><html lang="en"><head><title>Article</title><meta name="description" content="Description"><meta name="author" content="Ada"><meta property="article:published_time" content="2026-08-20"></head><body><article><h1>Article</h1><p>Text</p><a href="https://source.example/report">Source</a></article></body></html>`,
+      body: `<!doctype html><html lang="en"><head><title>Article</title><meta name="description" content="Description"><meta property="og:type" content="article"><meta name="author" content="Ada"><meta property="article:published_time" content="2026-08-20"></head><body><article><h1>Article</h1><p>Text</p><a href="https://source.example/report">Source</a></article></body></html>`,
     });
     expect(find(result, "content.article_structured_data").result).toBe("fail");
     expect(find(result, "content.author").result).toBe("pass");
@@ -144,7 +200,7 @@ describe("page content, entity and evidence rules", () => {
   it("does not count same-origin navigation as an external source", () => {
     const result = auditPageContent({
       url: URL,
-      body: `<!doctype html><html lang="en"><head><title>Article</title><meta name="description" content="Description"></head><body><article><h1>Article</h1><a href="/about">About us</a></article></body></html>`,
+      body: `<!doctype html><html lang="en"><head><title>Article</title><meta name="description" content="Description"><meta property="og:type" content="article"></head><body><article><h1>Article</h1><a href="/about">About us</a></article></body></html>`,
     });
     expect(find(result, "content.source_links")).toMatchObject({ result: "fail", evidence_kind: "heuristic" });
   });

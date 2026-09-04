@@ -478,6 +478,17 @@ const ZH_TW_FINDINGS: Record<string, FindingMessages> = {
       not_tested: "請檢查 robots 存取設定，適合時重新執行內容稽核。",
     },
   ),
+  "technical.snippet_directives": messages(
+    {
+      pass: "初始回應標頭與 HTML 中未發現會限制 AI 摘要或回答使用的頁面層指示。",
+      fail: "觀察到會限制 Google、Apple 或 Bing Copilot 產品使用頁面內容的 snippet 指示。",
+      not_tested: "初始頁面內容未接受檢查，因此無法判定 snippet 使用限制。",
+    },
+    {
+      fail: "若頁面應維持受影響 AI 產品的資格，請移除或縮小 snippet 限制指示。",
+      not_tested: "請排除量測限制，待頁面可抓取後重新執行稽核。",
+    },
+  ),
   "technical.canonical": messages(
     {
       pass: "初始 HTML 包含一個語法有效的 canonical URL。",
