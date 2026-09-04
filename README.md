@@ -21,7 +21,7 @@
 不囉唆馬上試試：
 
 ```bash
-npx --yes geo-aeo-audit audit [https://kurohsu.dev](https://example.com/) --site --html audit.html --html-lang zh-TW > audit.json
+npx --yes geo-aeo-audit audit https://example.com/ --site --html audit.html --html-lang zh-TW > audit.json
 ```
 
 這段指令會在目前的目錄下生成兩個報告檔案： `audit.json` 與 `audit.html`，可直接打開瀏覽。
