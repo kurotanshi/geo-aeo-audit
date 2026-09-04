@@ -109,9 +109,9 @@ describe("runAudit technical integration", () => {
     expect(result).not.toHaveProperty("score");
   });
 
-  it("passes all eight rules introduced by ruleset 0.3.0 on a complete fixture", async () => {
+  it("passes the rules introduced by ruleset 0.4.0 on a complete fixture", async () => {
     const result = await runAudit(config(`${fx.origin}/readiness`), { transportDeps: allowLoopback });
-    expect(result.ruleset_version).toBe("0.3.0");
+    expect(result.ruleset_version).toBe("0.4.0");
     for (const id of [
       "technical.llms_txt",
       "technical.not_found_status",

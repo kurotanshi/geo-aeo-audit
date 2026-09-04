@@ -6,6 +6,8 @@ describe("agent registry", () => {
     expect(AGENT_REGISTRY.map((entry) => entry.productToken)).toEqual([
       "Googlebot",
       "Google-Extended",
+      "Google-Agent",
+      "Google-GeminiNotebook",
       "bingbot",
       "OAI-SearchBot",
       "GPTBot",
@@ -15,6 +17,19 @@ describe("agent registry", () => {
       "ClaudeBot",
       "PerplexityBot",
       "Perplexity-User",
+      "Applebot",
+      "Applebot-Extended",
+      "Meta-ExternalAgent",
+      "Meta-ExternalFetcher",
+      "meta-webindexer",
+      "Amazonbot",
+      "Amzn-SearchBot",
+      "Amzn-User",
+      "CCBot",
+      "MistralAI-Training",
+      "MistralAI-Index",
+      "MistralAI-User",
+      "DuckAssistBot",
     ]);
   });
 
@@ -22,10 +37,13 @@ describe("agent registry", () => {
     expect(() => validateAgentRegistry()).not.toThrow();
     for (const entry of AGENT_REGISTRY) {
       expect(entry.officialSourceUrl).toMatch(/^https:\/\//);
-      expect(entry.checkedAt).toBe("2026-08-24");
+      expect(entry.checkedAt).toBe("2026-09-03");
       expect(entry.productScopes.length).toBeGreaterThan(0);
       expect(entry.officialSummary).not.toBe("");
     }
+    expect(AGENT_REGISTRY.find((entry) => entry.productToken === "bingbot")?.officialSourceUrl).toBe(
+      "https://www.bing.com/webmasters/help/which-crawlers-does-bing-use-8c184ec0",
+    );
   });
 
   it("rejects duplicate tokens instead of silently shadowing a policy", () => {

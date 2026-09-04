@@ -87,7 +87,6 @@ export function auditPageContent(input: ContentAuditInput): ContentAuditResult {
   const articleEntity = jsonLd.entities.find((entity) => hasType(entity, ARTICLE_TYPES));
   const articleLike =
     articleEntity !== undefined ||
-    findElements(document, "article").length > 0 ||
     metaValues(document, "property", "og:type").some((value) => value.toLowerCase() === "article");
 
   auditTitle(document, findings);
